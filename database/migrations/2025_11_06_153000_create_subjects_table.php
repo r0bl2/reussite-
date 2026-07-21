@@ -8,8 +8,10 @@ return new class extends Migration {
     {
         Schema::create('subjects', function (Blueprint $table) {
             $table->id();
-            $table->string('name')->unique();
+            $table->string('name');
+            $table->string('type_lycee'); // Recommandé : college, lycee_moderne, lycee_technique
             $table->timestamps();
+            $table->unique(['name', 'type_lycee']);
         });
     }
     public function down(){ Schema::dropIfExists('subjects'); }
