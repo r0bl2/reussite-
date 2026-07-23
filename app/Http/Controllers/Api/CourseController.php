@@ -77,7 +77,7 @@ class CourseController extends Controller
                 'name' => $course->subject->name,
             ] : null,
             'teacher_name' => $creatorName,
-            
+
             // OBJET ENSEIGNANT / CRÉATEUR GARANTI SANS NULL POUR FLUTTER
             'teacher'     => [
                 'id'         => $teacher?->id,
@@ -100,7 +100,7 @@ class CourseController extends Controller
     {
         $user = $request->user();
         $userRole = $user ? mb_strtolower(trim($user->role)) : null;
-        
+
         $query = Course::with(['teacher.user', 'subject']);
 
         // Filtrage rôle : Seul l'admin peut voir les cours inactifs
@@ -201,7 +201,7 @@ class CourseController extends Controller
             );
 
             $teacherId = $teacher->id;
-            
+
             // Extraction des matières depuis le champ 'matieres'
             $rawMatieres = $teacher->matieres ?? [];
             if (is_string($rawMatieres)) {
@@ -323,7 +323,7 @@ class CourseController extends Controller
                     'message' => 'Profil enseignant introuvable',
                 ], 422);
             }
-            
+
             $rawMatieres = $teacher->matieres ?? [];
             if (is_string($rawMatieres)) {
                 $rawMatieres = json_decode($rawMatieres, true) ?? explode(',', $rawMatieres);
@@ -345,7 +345,7 @@ class CourseController extends Controller
         $course->description = $request->input('description', $course->description);
         $course->level = $request->input('level', $course->level);
         $course->subject_id = $targetSubjectId;
-        
+
         if ($request->has('class')) {
             $course->class = $request->input('class');
         } elseif ($request->has('classe')) {

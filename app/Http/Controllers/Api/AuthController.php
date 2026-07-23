@@ -20,20 +20,20 @@ class AuthController extends Controller
     public function registerApi(Request $request)
     {
         $request->validate([
-            'username' => 
+            'username' =>
                 'required|string|unique:users,username',
 
-            'email' => 
+            'email' =>
                 'nullable|email|unique:users,email',
 
-            'password' => 
+            'password' =>
                 'required|min:6',
 
-            'role' => 
+            'role' =>
                 'required|in:student,teacher,parent,other',
 
             // TELEPHONE OBLIGATOIRE POUR ENSEIGNANT + UNIQUE
-            'telephone' => 
+            'telephone' =>
                 'required_if:role,teacher|nullable|unique:teachers,telephone|string|max:20',
         ]);
 
@@ -152,7 +152,7 @@ class AuthController extends Controller
             ], 403);
         }
 
-        $user->load('teacherProfile'); 
+        $user->load('teacherProfile');
 
         return response()->json([
             'status' => true,

@@ -131,7 +131,7 @@ class HomeTutorDemandController extends Controller
                 'neighborhood' => $demand->neighborhood,
                 'type_lycee' => $demand->type_lycee,
                 'levels' => $demand->levels,
-                'subjects' => $demand->subjects, 
+                'subjects' => $demand->subjects,
                 'photo_url' => asset('storage/' . $demand->photo_path),
                 'diploma_url' => asset('storage/' . $demand->diploma_path),
                 'cv_url' => asset('storage/' . $demand->cv_path),
@@ -172,7 +172,7 @@ class HomeTutorDemandController extends Controller
         } else {
             $demand->admin_comment = null;
         }
-        
+
         $demand->save();
 
         return response()->json([
@@ -188,7 +188,7 @@ class HomeTutorDemandController extends Controller
     public function getMyDemandStatus(Request $request)
     {
         $user = $request->user();
-        
+
         if (!$user) {
             return response()->json([
                 'status' => false,
@@ -246,7 +246,7 @@ class HomeTutorDemandController extends Controller
                 'neighborhood' => $demand->neighborhood,
                 'type_lycee' => $demand->type_lycee,
                 'levels' => $demand->levels,
-                'subjects' => $demand->subjects, 
+                'subjects' => $demand->subjects,
                 'photo_url' => asset('storage/' . $demand->photo_path),
                 'diploma_url' => asset('storage/' . $demand->diploma_path),
                 'cv_url' => asset('storage/' . $demand->cv_path),
@@ -281,7 +281,7 @@ class HomeTutorDemandController extends Controller
                 'neighborhood' => $tutor->neighborhood,
                 'type_lycee' => $tutor->type_lycee,
                 'levels' => $tutor->levels,
-                'subjects' => $tutor->subjects, 
+                'subjects' => $tutor->subjects,
                 'photo_url' => asset('storage/' . $tutor->photo_path),
             ];
         });

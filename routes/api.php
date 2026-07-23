@@ -18,7 +18,9 @@ Route::post('/register', [AuthController::class, 'registerApi']);
 Route::post('/loginApi', [AuthController::class, 'loginApi']);
 
 /*
+/*
 |--------------------------------------------------------------------------
+| ROUTES PROTÉGÉES (Utilisateurs connectés via Sanctum)
 | ROUTES PROTÉGÉES (Utilisateurs connectés via Sanctum)
 |--------------------------------------------------------------------------
 */
@@ -37,9 +39,25 @@ Route::middleware('auth:sanctum')->group(function () {
     | COURSES
     |--------------------------------------------------------------------------
     */
+Route::middleware('auth:sanctum')->group(function () {
+
+    /*
+    |--------------------------------------------------------------------------
+    | TEACHER PROFILE
+    |--------------------------------------------------------------------------
+    */
+    // 📇 Pour l'Enseignant : Récupérer les informations de son profil connecté
+    Route::get('/teacher/profile', [AuthController::class, 'getTeacherProfile']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | COURSES
+    |--------------------------------------------------------------------------
+    */
     Route::post('/courses', [CourseController::class, 'store']);
     Route::get('/courses', [CourseController::class, 'index']);
     Route::put('/courses/{course}/active', [CourseController::class, 'toggleActive']);
+    Route::put('/courses/{id}', [CourseController::class, 'update']);
     Route::put('/courses/{id}', [CourseController::class, 'update']);
     Route::delete('/courses/{course}', [CourseController::class, 'destroy']);
     Route::get('/courses/{id}/download', [CourseController::class, 'download']);
