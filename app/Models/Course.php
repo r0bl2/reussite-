@@ -21,9 +21,11 @@ class Course extends Model
         'active' => 'boolean',
     ];
 
+    protected $with = ['subject']; // 🔥 IMPORTANT (auto load)
+
     public function teacher()
     {
-        return $this->belongsTo(Teacher::class);
+        return $this->belongsTo(Teacher::class , 'teacher_id');
     }
 
     public function subject()

@@ -6,12 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class Subject extends Model
 {
+    // On ne garde que le nom comme attribut modifiable
     protected $fillable = [
         'name',
-        'description'
+        'type_lycee'
     ];
 
-    // Relations
+    // Relations conservées
     public function courses()
     {
         return $this->hasMany(Course::class);
@@ -30,5 +31,13 @@ class Subject extends Model
     public function books()
     {
         return $this->hasMany(Book::class);
+    }
+
+    /**
+     * Relation avec les enseignants (Plusieurs-à-Plusieurs)
+     */
+    public function teachers()
+    {
+        return $this->belongsToMany(Teacher::class, 'subject_teacher');
     }
 }

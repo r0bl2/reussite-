@@ -5,60 +5,165 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Course;
+use App\Models\Teacher;
+use App\Models\Subject;
+use Illuminate\Support\Facades\Storage;
 
 class CourseController extends Controller
 {
     /**
-     *  Liste des cours
-     * - Admin : tous les cours
-     * - Autres : uniquement les cours actifs
+     * Helper pour formater la réponse d'un cours avec les données enseignant et matière
      */
-    public function index(Request $request)
-{
-    $user = $request->user();
+    private function formatCourseData(Course $course): array
+    {
+        $teacher = $course->teacher;
+        $teacherUser = $teacher?->user;
 
-    $query = Course::query();
+        // 1. Identification du Nom et de l'Avatar
+        $creatorName = $teacherUser?->username ?? $teacherUser?->name ?? 'Administration';
 
-    // 🔒 Non admin → seulement les cours actifs
-    if (!$user || $user->role !== 'admin') {
-        $query->where('active', true);
-    }
-
-    // 🎓 Élève → filtrage strict
-    if ($user && $user->role === 'student') {
-        $student = $user->studentProfile;
-
-        if ($student) {
-            $query->where('level', $student->level)
-                  ->where('class', $student->class);
+        $avatarUrl = null;
+        if ($teacherUser && !empty($teacherUser->avatar)) {
+            $avatarUrl = filter_var($teacherUser->avatar, FILTER_VALIDATE_URL)
+                ? $teacherUser->avatar
+                : asset('storage/' . $teacherUser->avatar);
+        } elseif ($teacher && !empty($teacher->photo)) {
+            $avatarUrl = filter_var($teacher->photo, FILTER_VALIDATE_URL)
+                ? $teacher->photo
+                : asset('storage/' . $teacher->photo);
         }
-    }
 
-    // 🔍 Filtres optionnels (enseignant / parent)
-    if ($request->level) {
-        $query->where('level', $request->level);
-    }
+        // 2. Gestion séparée : Enseignant vs Admin
+        if ($teacher) {
+            // --- CAS ENSEIGNANT ---
+            $niveaux = $teacher->niveaux;
+            if (is_string($niveaux)) {
+                $niveaux = json_decode($niveaux, true) ?? explode(',', $niveaux);
+            }
 
-    if ($request->class) {
-        $query->where('class', $request->class);
-    }
+            $matieres = $teacher->matieres;
+            if (is_string($matieres)) {
+                $matieres = json_decode($matieres, true) ?? explode(',', $matieres);
+            }
 
-    return response()->json(
-        $query->with(['teacher.user', 'subject'])->paginate(20)
-    );
-}
+            $typeLycee = $teacher->type_lycee ?? $teacher->establishment ?? 'Non renseigné';
+        } else {
+            // --- CAS ADMIN (On remplit avec les infos du cours) ---
+            $niveaux = [];
+            if ($course->level) {
+                $niveaux[] = $course->class ? "{$course->level} ({$course->class})" : $course->level;
+            } else {
+                $niveaux[] = "Tous niveaux";
+            }
+
+            $matieres = [];
+            if ($course->subject) {
+                $matieres[] = $course->subject->name;
+            } else {
+                $matieres[] = "Général";
+            }
+
+            $typeLycee = "Établissement Général";
+        }
+
+        return [
+            'id'          => $course->id,
+            'title'       => $course->title,
+            'description' => $course->description,
+            'level'       => $course->level ?? 'Non spécifié',
+            'class'       => $course->class ?? 'Toutes',
+            'subject'     => $course->subject ? [
+                'id'   => $course->subject->id,
+                'name' => $course->subject->name,
+            ] : null,
+            'teacher_name' => $creatorName,
+            
+            // OBJET ENSEIGNANT / CRÉATEUR GARANTI SANS NULL POUR FLUTTER
+            'teacher'     => [
+                'id'         => $teacher?->id,
+                'name'       => $creatorName,
+                'avatar_url' => $avatarUrl,
+                'type_lycee' => $typeLycee,
+                'niveaux'    => !empty($niveaux) ? $niveaux : ['Non renseigné'],
+                'matieres'   => !empty($matieres) ? $matieres : ['Général'],
+            ],
+
+            'file_path'   => $course->file_path,
+            'active'      => (bool) $course->active,
+        ];
+    }
 
     /**
-     *  Création d’un cours (ADMIN & TEACHER)
-     *  TOUS les cours sont créés INACTIFS
+     * Liste des cours
+     */
+    public function index(Request $request)
+    {
+        $user = $request->user();
+        $userRole = $user ? mb_strtolower(trim($user->role)) : null;
+        
+        $query = Course::with(['teacher.user', 'subject']);
+
+        // Filtrage rôle : Seul l'admin peut voir les cours inactifs
+        if ($userRole !== 'admin') {
+            $query->where('active', true);
+        }
+
+        // Restriction : Seuls les élèves voient un contenu restreint à leur classe
+        if ($userRole === 'student') {
+            $student = $user->studentProfile;
+
+            if ($student) {
+                $query->where('level', $student->niveau)
+                      ->where('class', $student->classe);
+            } else {
+                return response()->json([
+                    'status'     => true,
+                    'data'       => [],
+                    'pagination' => null
+                ]);
+            }
+        } else {
+            // Pour l'admin et les enseignants, le filtrage par niveau/classe est optionnel
+            if ($request->filled('level')) {
+                $query->where('level', $request->level);
+            }
+
+            if ($request->filled('class')) {
+                $query->where('class', $request->class);
+            }
+        }
+
+        // Pagination
+        $courses = $query->paginate(20);
+
+        // Transformation propre
+        $formattedCourses = collect($courses->items())->map(function ($course) {
+            return $this->formatCourseData($course);
+        });
+
+        return response()->json([
+            'status'     => true,
+            'data'       => $formattedCourses,
+            'pagination' => [
+                'current_page' => $courses->currentPage(),
+                'last_page'    => $courses->lastPage(),
+                'per_page'     => $courses->perPage(),
+                'total'        => $courses->total(),
+            ]
+        ]);
+    }
+
+    /**
+     * Création d’un cours
      */
     public function store(Request $request)
     {
         $request->validate([
             'title'       => 'required|string',
             'description' => 'required|string',
-            'file'        => 'required|file|max:10240',
-            'subject_id'  => 'nullable|exists:subjects,id',
+            'file'        => 'required|file|max:51200',
+            'subject_id'  => 'nullable',
+            'subject'     => 'nullable',
             'level'       => 'nullable|string',
             'class'       => 'nullable|string',
         ]);
@@ -67,85 +172,256 @@ class CourseController extends Controller
 
         if (!$user) {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Utilisateur non authentifié',
             ], 401);
         }
 
-        if (!in_array($user->role, ['admin', 'teacher'])) {
+        $userRole = mb_strtolower(trim($user->role));
+
+        if (!in_array($userRole, ['admin', 'teacher'])) {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Accès non autorisé',
             ], 403);
         }
 
         $teacherId = null;
+        $allowedSubjects = [];
 
-        // Si enseignant → rattacher au teacher
-        if ($user->role === 'teacher') {
-            $teacher = $user->teacherProfile;
-
-            if (!$teacher) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Profil enseignant introuvable',
-                ], 422);
-            }
+        if ($userRole === 'teacher') {
+            // Recherche du profil ou création automatique s'il manque
+            $teacher = Teacher::firstOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'type_lycee' => $user->type_lycee ?? 'lycee_moderne',
+                    'niveaux'    => $request->input('level') ? [$request->input('level')] : [],
+                    'matieres'   => $request->input('subject') ? [$request->input('subject')] : [],
+                ]
+            );
 
             $teacherId = $teacher->id;
+            
+            // Extraction des matières depuis le champ 'matieres'
+            $rawMatieres = $teacher->matieres ?? [];
+            if (is_string($rawMatieres)) {
+                $rawMatieres = json_decode($rawMatieres, true) ?? explode(',', $rawMatieres);
+            }
+
+            // Nettoyage textuel en minuscules pour comparaison uniforme
+            $allowedSubjects = collect($rawMatieres)->map(function($name) {
+                return mb_strtolower(trim($name));
+            })->toArray();
         }
 
-        // Stockage du fichier
+        // Résolution de la matière reçue depuis l'application
+        $subjectId = null;
+        $inputSubjectName = '';
+        $rawSubject = $request->input('subject_id') ?? $request->input('subject');
+
+        if ($rawSubject) {
+            if (is_numeric($rawSubject)) {
+                $subject = Subject::find($rawSubject);
+                if ($subject) {
+                    $subjectId = $subject->id;
+                    $inputSubjectName = mb_strtolower(trim($subject->name));
+                }
+            } else {
+                $inputSubjectName = mb_strtolower(trim($rawSubject));
+                $subject = Subject::firstOrCreate(['name' => trim($rawSubject)]);
+                $subjectId = $subject->id;
+            }
+        }
+
+        if (!$subjectId) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'La matière sélectionnée est requise ou invalide.',
+            ], 422);
+        }
+
+        // Sécurité : Vérification basée sur la valeur textuelle de la matière pour les enseignants
+        if ($userRole === 'teacher' && !empty($allowedSubjects)) {
+            if (!in_array($inputSubjectName, $allowedSubjects)) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Accès refusé. Vous pouvez uniquement ajouter des contenus pour les matières choisies lors de votre inscription.',
+                ], 403);
+            }
+        }
+
         $path = $request->file('file')->store('courses', 'public');
 
-        // Création du cours
         $course = Course::create([
-            'teacher_id' => $teacherId, // null si admin
-            'subject_id' => $request->subject_id,
-            'title'      => $request->title,
-            'description'=> $request->description,
-            'file_path'  => $path,
-            'level'      => $request->level,
-            'class'      => $request->class,
-            'active'     => false, 
+            'teacher_id'  => $teacherId,
+            'subject_id'  => $subjectId,
+            'title'       => $request->title,
+            'description' => $request->description,
+            'file_path'   => $path,
+            'level'       => $request->level,
+            'class'       => $request->class ?? $request->classe,
+            'active'      => false, // Attente de validation admin
         ]);
+
+        $course->load(['subject', 'teacher.user']);
 
         return response()->json([
             'status'  => true,
             'message' => 'Cours créé et en attente de validation admin',
-            'course'  => $course,
+            'course'  => $this->formatCourseData($course),
         ], 201);
     }
 
     /**
-     * 📌 Téléchargement (uniquement si validé)
+     * Mise à jour d’un cours
      */
-    public function download($id)
+    public function update(Request $request, $id)
     {
+        $user = $request->user();
         $course = Course::findOrFail($id);
 
-        if (!$course->active) {
+        if (!$user) {
             return response()->json([
-                'status' => false,
-                'message' => 'Cours non encore validé',
+                'status'  => false,
+                'message' => 'Utilisateur non authentifié',
+            ], 401);
+        }
+
+        $userRole = mb_strtolower(trim($user->role));
+
+        if ($userRole !== 'admin' && ($userRole === 'teacher' && $course->teacher?->user_id !== $user->id)) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Accès non autorisé pour modifier ce cours',
             ], 403);
         }
 
-        return response()->download(
-            storage_path('app/public/' . $course->file_path)
-        );
+        $rawSubject = $request->input('subject_id') ?? $request->input('subject');
+        $targetSubjectId = $course->subject_id;
+        $inputSubjectName = '';
+
+        if ($rawSubject) {
+            if (is_numeric($rawSubject)) {
+                $subject = Subject::find($rawSubject);
+                if ($subject) {
+                    $targetSubjectId = $subject->id;
+                    $inputSubjectName = mb_strtolower(trim($subject->name));
+                }
+            } else {
+                $inputSubjectName = mb_strtolower(trim($rawSubject));
+                $subject = Subject::firstOrCreate(['name' => trim($rawSubject)]);
+                $targetSubjectId = $subject->id;
+            }
+        }
+
+        // Sécurité lors du changement de matière par l'enseignant
+        if ($userRole === 'teacher' && $targetSubjectId != $course->subject_id) {
+            $teacher = Teacher::where('user_id', $user->id)->first();
+            if (!$teacher) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Profil enseignant introuvable',
+                ], 422);
+            }
+            
+            $rawMatieres = $teacher->matieres ?? [];
+            if (is_string($rawMatieres)) {
+                $rawMatieres = json_decode($rawMatieres, true) ?? explode(',', $rawMatieres);
+            }
+
+            $allowedSubjects = collect($rawMatieres)->map(function($name) {
+                return mb_strtolower(trim($name));
+            })->toArray();
+
+            if (!in_array($inputSubjectName, $allowedSubjects)) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Accès refusé. Vous ne pouvez pas attribuer ce cours à une matière qui n\'est pas parmi vos choix.',
+                ], 403);
+            }
+        }
+
+        $course->title = $request->input('title', $course->title);
+        $course->description = $request->input('description', $course->description);
+        $course->level = $request->input('level', $course->level);
+        $course->subject_id = $targetSubjectId;
+        
+        if ($request->has('class')) {
+            $course->class = $request->input('class');
+        } elseif ($request->has('classe')) {
+            $course->class = $request->input('classe');
+        }
+
+        if ($request->hasFile('file')) {
+            if ($course->file_path && Storage::disk('public')->exists($course->file_path)) {
+                Storage::disk('public')->delete($course->file_path);
+            }
+            $path = $request->file('file')->store('courses', 'public');
+            $course->file_path = $path;
+        }
+
+        $course->save();
+        $course->load(['subject', 'teacher.user']);
+
+        return response()->json([
+            'status'  => true,
+            'message' => 'Cours modifié avec succès',
+            'course'  => $this->formatCourseData($course),
+        ]);
     }
 
     /**
-     * 📌 Activation / désactivation d’un cours (Admin uniquement)
+     * Télécharger cours
+     */
+    public function download(Request $request, $id)
+    {
+        $user = $request->user();
+        $course = Course::findOrFail($id);
+
+        $userRole = $user ? mb_strtolower(trim($user->role)) : null;
+
+        // AUTORISATION : L'admin et l'enseignant créateur peuvent télécharger le cours inactif
+        $isAdmin = $userRole === 'admin';
+        $isOwnerTeacher = $userRole === 'teacher' && $course->teacher?->user_id === $user?->id;
+
+        if (!$course->active && !$isAdmin && !$isOwnerTeacher) {
+            return response()->json([
+                'message' => 'Cours non validé'
+            ], 403);
+        }
+
+        // Restriction d'accès selon le profil étudiant
+        if ($userRole === 'student') {
+            $student = $user->studentProfile;
+
+            if ($student && ($course->level !== $student->niveau || $course->class !== $student->classe)) {
+                return response()->json([
+                    'message' => 'Accès interdit'
+                ], 403);
+            }
+        }
+
+        $filePath = storage_path('app/public/' . $course->file_path);
+
+        if (!file_exists($filePath)) {
+            return response()->json([
+                'message' => 'Fichier introuvable sur le serveur'
+            ], 404);
+        }
+
+        return response()->download($filePath);
+    }
+
+    /**
+     * Activer / Désactiver
      */
     public function toggleActive(Request $request, $id)
     {
         $user = $request->user();
 
-        if (!$user || $user->role != 'admin') {
+        if (!$user || mb_strtolower(trim($user->role)) !== 'admin') {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Accès non autorisé',
             ], 403);
         }
@@ -155,32 +431,40 @@ class CourseController extends Controller
         $course->save();
 
         return response()->json([
-            'status' => true,
-            'message' => 'Cours mis à jour',
-            'course' => $course,
+            'status'  => true,
+            'message' => $course->active ? 'Cours activé' : 'Cours désactivé',
+            'course'  => [
+                'id'     => $course->id,
+                'active' => (bool) $course->active
+            ]
         ]);
     }
 
     /**
-     * 📌 Suppression d’un cours (Admin uniquement)
+     * Suppression
      */
     public function destroy(Request $request, $id)
     {
         $user = $request->user();
 
-        if (!$user || $user->role != 'admin') {
+        if (!$user || mb_strtolower(trim($user->role)) !== 'admin') {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Accès non autorisé',
             ], 403);
         }
 
         $course = Course::findOrFail($id);
+
+        if ($course->file_path && Storage::disk('public')->exists($course->file_path)) {
+            Storage::disk('public')->delete($course->file_path);
+        }
+
         $course->delete();
 
         return response()->json([
-            'status' => true,
-            'message' => 'Cours supprimé',
+            'status'  => true,
+            'message' => 'Cours supprimé avec succès',
         ]);
     }
 }
