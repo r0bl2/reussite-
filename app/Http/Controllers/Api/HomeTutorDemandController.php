@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\HomeTutorDemand;
 use App\Models\Teacher;
+use App\Models\AdConfiguration;
 use Illuminate\Support\Facades\Validator;
 
 class HomeTutorDemandController extends Controller
@@ -47,7 +48,7 @@ class HomeTutorDemandController extends Controller
             'subjects' => 'required|array|min:1',
             'photo' => 'required|image|mimes:jpeg,png,jpg|max:5120',
             'diploma' => 'required|file|mimes:jpeg,png,jpg,pdf|max:5120',
-            'cv' => 'required|file|mimes:pdf,doc,docx|max:5120',
+            'cv' => 'required|file|mimes:pdf,doc,png,jpg,docx|max:5120',
         ]);
 
         if ($validator->fails()) {
@@ -271,18 +272,24 @@ class HomeTutorDemandController extends Controller
             ->latest()
             ->get();
 
-        $formattedTutors = $approvedTutors->map(function($tutor) {
+        // 🔥 FIX : le numéro était écrit en dur ("+228 93 05 23 64").
+        // Il est désormais saisi par l'admin via AdConfigController::update()
+        // et stocké dans ad_configurations.tutor_contact_phone.
+        $contactPhone = AdConfiguration::first()->tutor_contact_phone ?? null;
+
+        $formattedTutors = $approvedTutors->map(function($tutor) use ($contactPhone) {
             return [
                 'id' => $tutor->id,
                 'last_name' => $tutor->last_name,
                 'first_name' => $tutor->first_name,
-                'phone_number' => "+228 93 05 23 64",
+                'phone_number' => $contactPhone,
                 'city' => $tutor->city,
                 'neighborhood' => $tutor->neighborhood,
                 'type_lycee' => $tutor->type_lycee,
                 'levels' => $tutor->levels,
                 'subjects' => $tutor->subjects,
                 'photo_url' => asset('storage/' . $tutor->photo_path),
+                'cv_url' => $tutor->cv_path ? asset('storage/' . $tutor->cv_path) : null,
             ];
         });
 

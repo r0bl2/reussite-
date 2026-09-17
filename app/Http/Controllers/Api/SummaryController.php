@@ -12,20 +12,119 @@ use Illuminate\Support\Facades\Storage;
 class SummaryController extends Controller
 {
     /**
-     * Liste des résumés
+     * Helper pour formater la réponse d'un résumé avec les données enseignant et matière
+     */
+    private function formatSummaryData(Summary $summary): array
+    {
+        $teacher = $summary->teacher;
+        $teacherUser = $teacher?->user;
+
+        // 1. Identification du Nom et de l'Avatar
+        $creatorName = $teacherUser?->username ?? $teacherUser?->name ?? 'Administration';
+
+        $avatarUrl = null;
+        if ($teacherUser && !empty($teacherUser->avatar)) {
+            $avatarUrl = filter_var($teacherUser->avatar, FILTER_VALIDATE_URL)
+                ? $teacherUser->avatar
+                : asset('storage/' . $teacherUser->avatar);
+        } elseif ($teacher && !empty($teacher->photo)) {
+            $avatarUrl = filter_var($teacher->photo, FILTER_VALIDATE_URL)
+                ? $teacher->photo
+                : asset('storage/' . $teacher->photo);
+        }
+
+        // 2. Gestion séparée : Enseignant vs Admin
+        if ($teacher) {
+            // --- CAS ENSEIGNANT ---
+            $niveaux = $teacher->niveaux;
+            if (is_string($niveaux)) {
+                $niveaux = json_decode($niveaux, true) ?? explode(',', $niveaux);
+            }
+
+            $matieres = $teacher->matieres;
+            if (is_string($matieres)) {
+                $matieres = json_decode($matieres, true) ?? explode(',', $matieres);
+            }
+
+            $typeLycee = $teacher->type_lycee ?? $teacher->establishment ?? 'Non renseigné';
+        } else {
+            // --- CAS ADMIN (On remplit avec les infos du résumé) ---
+            $niveaux = [];
+            if ($summary->level) {
+                $niveaux[] = $summary->class ? "{$summary->level} ({$summary->class})" : $summary->level;
+            } else {
+                $niveaux[] = "Tous niveaux";
+            }
+
+            $matieres = [];
+            if ($summary->subject) {
+                $matieres[] = $summary->subject->name;
+            } else {
+                $matieres[] = "Général";
+            }
+
+            $typeLycee = "Établissement Général";
+        }
+
+        return [
+            'id'           => $summary->id,
+            'title'        => $summary->title,
+            'description'  => $summary->description,
+            'level'        => $summary->level ?? 'Non spécifié',
+            'class'        => $summary->class ?? 'Toutes',
+            'subject'      => $summary->subject ? [
+                'id'   => $summary->subject->id,
+                'name' => $summary->subject->name,
+            ] : null,
+            'teacher_name' => $creatorName,
+
+            // OBJET ENSEIGNANT / CRÉATEUR GARANTI SANS NULL POUR FLUTTER
+            'teacher'     => [
+                'id'         => $teacher?->id,
+                'user_id'    => $teacher?->user_id,
+                'name'       => $creatorName,
+                'avatar_url' => $avatarUrl,
+                'type_lycee' => $typeLycee,
+                'niveaux'    => !empty($niveaux) ? $niveaux : ['Non renseigné'],
+                'matieres'   => !empty($matieres) ? $matieres : ['Général'],
+            ],
+
+            'file_path'   => $summary->file_path,
+            'active'      => (bool) $summary->active,
+        ];
+    }
+
+    /**
+     * Liste des résumés avec filtrage adapté selon le rôle
      */
     public function index(Request $request)
     {
         $user = $request->user();
+        $userRole = $user ? mb_strtolower(trim($user->role)) : null;
+
         $query = Summary::with(['teacher.user', 'subject']);
 
-        // Filtrage rôle : Seul l'admin peut voir les résumés inactifs
-        if (!$user || $user->role !== 'admin') {
+        // 1. FILTRAGE PAR RÔLE & VISIBILITÉ DES RÉSUMÉS INACTIFS
+        if ($userRole === 'admin') {
+            // L'admin voit TOUS les résumés (actifs et inactifs)
+        } elseif ($userRole === 'teacher') {
+            // L'enseignant voit les résumés ACTIFS + SES PROPRES RÉSUMÉS (même inactifs)
+            $teacher = Teacher::where('user_id', $user->id)->first();
+            $teacherId = $teacher ? $teacher->id : null;
+
+            $query->where(function ($q) use ($teacherId) {
+                $q->where('active', true);
+                if ($teacherId) {
+                    $q->orWhere('teacher_id', $teacherId);
+                }
+            });
+        } else {
+            // Les élèves et visiteurs ne voient QUE les résumés actifs
             $query->where('active', true);
         }
 
-        // Restriction : Seuls les élèves voient un contenu restreint à leur classe
-        if ($user && $user->role === 'student') {
+        // 2. RESTRICTIONS SPÉCIFIQUES AUX ÉLÈVES ET FILTRES REQUÊTE
+        if ($userRole === 'student') {
             $student = $user->studentProfile;
 
             if ($student) {
@@ -33,51 +132,37 @@ class SummaryController extends Controller
                       ->where('class', $student->classe);
             } else {
                 return response()->json([
-                    'status' => true,
-                    'data' => [],
+                    'status'     => true,
+                    'data'       => [],
                     'pagination' => null
                 ]);
             }
         } else {
-            // Pour l'admin et les enseignants, le filtrage par niveau/classe est optionnel
-            if ($request->level) {
+            // Filtrage optionnel par niveau et classe pour admins/enseignants
+            if ($request->filled('level')) {
                 $query->where('level', $request->level);
             }
 
-            if ($request->class) {
+            if ($request->filled('class')) {
                 $query->where('class', $request->class);
             }
         }
 
-        // Pagination
-        $summaries = $query->paginate(20);
+        // 3. PAGINATION ET FORMATAGE
+        $summaries = $query->latest()->paginate(20);
 
-        // Transformation propre (Structure d'objet conservée pour Flutter)
         $formattedSummaries = collect($summaries->items())->map(function ($summary) {
-            return [
-                'id' => $summary->id,
-                'title' => $summary->title,
-                'description' => $summary->description,
-                'level' => $summary->level,
-                'class' => $summary->class,
-                'subject' => $summary->subject ? [
-                    'id' => $summary->subject->id,
-                    'name' => $summary->subject->name
-                ] : null,
-                'teacher_name' => $summary->teacher?->user?->name ?? 'Inconnu',
-                'file_path' => $summary->file_path,
-                'active' => (bool) $summary->active,
-            ];
+            return $this->formatSummaryData($summary);
         });
 
         return response()->json([
-            'status' => true,
-            'data' => $formattedSummaries,
+            'status'     => true,
+            'data'       => $formattedSummaries,
             'pagination' => [
                 'current_page' => $summaries->currentPage(),
-                'last_page' => $summaries->lastPage(),
-                'per_page' => $summaries->perPage(),
-                'total' => $summaries->total(),
+                'last_page'    => $summaries->lastPage(),
+                'per_page'     => $summaries->perPage(),
+                'total'        => $summaries->total(),
             ]
         ]);
     }
@@ -101,14 +186,16 @@ class SummaryController extends Controller
 
         if (!$user) {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Utilisateur non authentifié',
             ], 401);
         }
 
-        if (!in_array($user->role, ['admin', 'teacher'])) {
+        $userRole = mb_strtolower(trim($user->role));
+
+        if (!in_array($userRole, ['admin', 'teacher'])) {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Accès non autorisé',
             ], 403);
         }
@@ -116,17 +203,20 @@ class SummaryController extends Controller
         $teacherId = null;
         $allowedSubjects = [];
 
-        if ($user->role === 'teacher') {
-            $teacher = Teacher::where('user_id', $user->id)->first();
-            if (!$teacher) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Profil enseignant introuvable',
-                ], 422);
-            }
+        if ($userRole === 'teacher') {
+            // Recherche du profil ou création automatique s'il manque
+            $teacher = Teacher::firstOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'type_lycee' => $user->type_lycee ?? 'lycee_moderne',
+                    'niveaux'    => $request->input('level') ? [$request->input('level')] : [],
+                    'matieres'   => $request->input('subject') ? [$request->input('subject')] : [],
+                ]
+            );
+
             $teacherId = $teacher->id;
-            
-            // Extraction des matières depuis le champ 'matieres' de la table teachers
+
+            // Extraction des matières depuis le champ 'matieres'
             $rawMatieres = $teacher->matieres ?? [];
             if (is_string($rawMatieres)) {
                 $rawMatieres = json_decode($rawMatieres, true) ?? explode(',', $rawMatieres);
@@ -159,22 +249,21 @@ class SummaryController extends Controller
 
         if (!$subjectId) {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'La matière sélectionnée est requise ou invalide.',
             ], 422);
         }
 
-        // Sécurité : Vérification basée sur la valeur textuelle de la matière
-        if ($user->role === 'teacher') {
+        // Sécurité : Vérification basée sur la valeur textuelle de la matière pour les enseignants
+        if ($userRole === 'teacher' && !empty($allowedSubjects)) {
             if (!in_array($inputSubjectName, $allowedSubjects)) {
                 return response()->json([
-                    'status' => false,
+                    'status'  => false,
                     'message' => 'Accès refusé. Vous pouvez uniquement ajouter des contenus pour les matières choisies lors de votre inscription.',
                 ], 403);
             }
         }
 
-        // Stockage dans le dossier 'summaries'
         $path = $request->file('file')->store('summaries', 'public');
 
         $summary = Summary::create([
@@ -184,28 +273,16 @@ class SummaryController extends Controller
             'description' => $request->description,
             'file_path'   => $path,
             'level'       => $request->level,
-            'class'       => $request->class,
+            'class'       => $request->class ?? $request->classe,
             'active'      => false, // Attente de validation admin
         ]);
 
-        $summary->load('subject');
+        $summary->load(['subject', 'teacher.user']);
 
         return response()->json([
             'status'  => true,
             'message' => 'Résumé créé et en attente de validation admin',
-            'summary' => [
-                'id' => $summary->id,
-                'title' => $summary->title,
-                'description' => $summary->description,
-                'level' => $summary->level,
-                'class' => $summary->class,
-                'subject' => $summary->subject ? [
-                    'id' => $summary->subject->id,
-                    'name' => $summary->subject->name
-                ] : null,
-                'file_path' => $summary->file_path,
-                'active' => (bool) $summary->active,
-            ],
+            'summary' => $this->formatSummaryData($summary),
         ], 201);
     }
 
@@ -219,14 +296,16 @@ class SummaryController extends Controller
 
         if (!$user) {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Utilisateur non authentifié',
             ], 401);
         }
 
-        if ($user->role !== 'admin' && ($user->role === 'teacher' && $summary->teacher?->user_id !== $user->id)) {
+        $userRole = mb_strtolower(trim($user->role));
+
+        if ($userRole !== 'admin' && ($userRole === 'teacher' && $summary->teacher?->user_id !== $user->id)) {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Accès non autorisé pour modifier ce résumé',
             ], 403);
         }
@@ -250,15 +329,15 @@ class SummaryController extends Controller
         }
 
         // Sécurité lors du changement de matière par l'enseignant
-        if ($user->role === 'teacher' && $targetSubjectId != $summary->subject_id) {
+        if ($userRole === 'teacher' && $targetSubjectId != $summary->subject_id) {
             $teacher = Teacher::where('user_id', $user->id)->first();
             if (!$teacher) {
                 return response()->json([
-                    'status' => false,
+                    'status'  => false,
                     'message' => 'Profil enseignant introuvable',
                 ], 422);
             }
-            
+
             $rawMatieres = $teacher->matieres ?? [];
             if (is_string($rawMatieres)) {
                 $rawMatieres = json_decode($rawMatieres, true) ?? explode(',', $rawMatieres);
@@ -270,7 +349,7 @@ class SummaryController extends Controller
 
             if (!in_array($inputSubjectName, $allowedSubjects)) {
                 return response()->json([
-                    'status' => false,
+                    'status'  => false,
                     'message' => 'Accès refusé. Vous ne pouvez pas attribuer ce résumé à une matière qui n\'est pas parmi vos choix.',
                 ], 403);
             }
@@ -280,7 +359,7 @@ class SummaryController extends Controller
         $summary->description = $request->input('description', $summary->description);
         $summary->level = $request->input('level', $summary->level);
         $summary->subject_id = $targetSubjectId;
-        
+
         if ($request->has('class')) {
             $summary->class = $request->input('class');
         } elseif ($request->has('classe')) {
@@ -296,55 +375,72 @@ class SummaryController extends Controller
         }
 
         $summary->save();
-        $summary->load('subject');
+        $summary->load(['subject', 'teacher.user']);
 
         return response()->json([
-            "status" => true,
-            "message" => "Résumé modifié avec succès",
-            "summary" => [
-                'id' => $summary->id,
-                'title' => $summary->title,
-                'description' => $summary->description,
-                'level' => $summary->level,
-                'class' => $summary->class,
-                'subject' => $summary->subject ? [
-                    'id' => $summary->subject->id,
-                    'name' => $summary->subject->name
-                ] : null,
-                'file_path' => $summary->file_path,
-                'active' => (bool) $summary->active,
-            ]
+            'status'  => true,
+            'message' => 'Résumé modifié avec succès',
+            'summary' => $this->formatSummaryData($summary),
         ]);
     }
 
     /**
-     * Télécharger résumé
-     */
-    /**
-     * Télécharger résumé
+     * Télécharger un résumé
      */
     public function download(Request $request, $id)
     {
         $user = $request->user();
         $summary = Summary::findOrFail($id);
 
-        // ✅ AUTORISATION : L'admin et l'enseignant créateur peuvent accéder au fichier inactif
-        $isAdmin = $user && $user->role === 'admin';
-        $isOwnerTeacher = $user && $user->role === 'teacher' && $summary->teacher?->user_id === $user->id;
+        $userRole = $user ? mb_strtolower(trim($user->role)) : null;
 
+        $isAdmin = $userRole === 'admin';
+        $isOwnerTeacher = $userRole === 'teacher' && $summary->teacher?->user_id === $user?->id;
+
+        // 1. Vérification si le résumé est actif
         if (!$summary->active && !$isAdmin && !$isOwnerTeacher) {
             return response()->json([
-                'message' => 'Résumé non validé'
+                'message' => 'Résumé non validé par l\'administration'
             ], 403);
         }
 
-        // Restriction supplémentaire pour les étudiants
-        if ($user && $user->role === 'student') {
-            $student = $user->studentProfile;
+        // 2. Vérification pour les élèves
+        if ($userRole === 'student') {
+            // Charger la relation profil étudiant si elle existe
+            $studentProfile = $user->studentProfile ?? $user->student ?? null;
 
-            if ($student && ($summary->level !== $student->niveau || $summary->class !== $student->classe)) {
+            // Récupération des valeurs depuis $user OU depuis la relation du profil
+            $rawUserLevel = $user->niveau ?? $user->level ?? $studentProfile?->niveau ?? $studentProfile?->level ?? '';
+            $rawUserClass = $user->classe ?? $user->class ?? $studentProfile?->classe ?? $studentProfile?->class ?? '';
+
+            // Helper pour nettoyer et normaliser les chaînes
+            $cleanStr = function ($str) {
+                if (!$str) return '';
+                $str = mb_strtolower(trim((string)$str));
+                $str = str_replace(['è', 'é', 'ê', 'ë', 'à', 'â', 'ô'], ['e', 'e', 'e', 'e', 'a', 'a', 'o'], $str);
+                return $str;
+            };
+
+            $userLevel  = $cleanStr($rawUserLevel);
+            $userClass  = $cleanStr($rawUserClass);
+
+            $summaryLevel = $cleanStr($summary->level ?? '');
+            $summaryClass = $cleanStr($summary->class ?? '');
+
+            // Tolérances de correspondance
+            $levelMatches = ($summaryLevel === $userLevel) 
+                || empty($summaryLevel) 
+                || $summaryLevel === 'tous niveaux' 
+                || $summaryLevel === 'tous';
+
+            $classMatches = ($summaryClass === $userClass) 
+                || empty($summaryClass) 
+                || $summaryClass === 'toutes' 
+                || $summaryClass === 'toutes les classes';
+
+            if (!$levelMatches || !$classMatches) {
                 return response()->json([
-                    'message' => 'Accès interdit'
+                    'message' => "Accès interdit : Niveau/Classe non correspondant. (Résumé: '{$summary->level}' / '{$summary->class}' vs Élève: '{$rawUserLevel}' / '{$rawUserClass}')"
                 ], 403);
             }
         }
@@ -367,9 +463,9 @@ class SummaryController extends Controller
     {
         $user = $request->user();
 
-        if (!$user || $user->role != 'admin') {
+        if (!$user || mb_strtolower(trim($user->role)) !== 'admin') {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Accès non autorisé',
             ], 403);
         }
@@ -379,10 +475,10 @@ class SummaryController extends Controller
         $summary->save();
 
         return response()->json([
-            'status' => true,
+            'status'  => true,
             'message' => $summary->active ? 'Résumé activé' : 'Résumé désactivé',
             'summary' => [
-                'id' => $summary->id,
+                'id'     => $summary->id,
                 'active' => (bool) $summary->active
             ]
         ]);
@@ -395,9 +491,9 @@ class SummaryController extends Controller
     {
         $user = $request->user();
 
-        if (!$user || $user->role != 'admin') {
+        if (!$user || mb_strtolower(trim($user->role)) !== 'admin') {
             return response()->json([
-                'status' => false,
+                'status'  => false,
                 'message' => 'Accès non autorisé',
             ], 403);
         }
@@ -411,7 +507,7 @@ class SummaryController extends Controller
         $summary->delete();
 
         return response()->json([
-            'status' => true,
+            'status'  => true,
             'message' => 'Résumé supprimé avec succès',
         ]);
     }

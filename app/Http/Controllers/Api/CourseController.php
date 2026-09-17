@@ -12,6 +12,15 @@ use Illuminate\Support\Facades\Storage;
 class CourseController extends Controller
 {
     /**
+     * Règle de validation du fichier de cours, réutilisée par store() et update().
+     * On limite volontairement aux formats consultables/téléchargeables comme "cours" :
+     * PDF (lecture via SfPdfViewer côté app) + quelques formats bureautiques courants.
+     * Ajuste la liste `mimes` si tu veux n'accepter QUE le PDF.
+     */
+    private const FILE_VALIDATION_RULE = 'required|file|mimes:pdf,doc,docx,ppt,pptx|max:51200';
+    private const FILE_VALIDATION_RULE_OPTIONAL = 'nullable|file|mimes:pdf,doc,docx,ppt,pptx|max:51200';
+
+    /**
      * Helper pour formater la réponse d'un cours avec les données enseignant et matière
      */
     private function formatCourseData(Course $course): array
@@ -67,12 +76,12 @@ class CourseController extends Controller
         }
 
         return [
-            'id'          => $course->id,
-            'title'       => $course->title,
-            'description' => $course->description,
-            'level'       => $course->level ?? 'Non spécifié',
-            'class'       => $course->class ?? 'Toutes',
-            'subject'     => $course->subject ? [
+            'id'           => $course->id,
+            'title'        => $course->title,
+            'description'  => $course->description,
+            'level'        => $course->level ?? 'Non spécifié',
+            'class'        => $course->class ?? 'Toutes',
+            'subject'      => $course->subject ? [
                 'id'   => $course->subject->id,
                 'name' => $course->subject->name,
             ] : null,
@@ -81,6 +90,7 @@ class CourseController extends Controller
             // OBJET ENSEIGNANT / CRÉATEUR GARANTI SANS NULL POUR FLUTTER
             'teacher'     => [
                 'id'         => $teacher?->id,
+                'user_id'    => $teacher?->user_id,
                 'name'       => $creatorName,
                 'avatar_url' => $avatarUrl,
                 'type_lycee' => $typeLycee,
@@ -94,7 +104,7 @@ class CourseController extends Controller
     }
 
     /**
-     * Liste des cours
+     * Liste des cours avec filtrage adapté selon le rôle
      */
     public function index(Request $request)
     {
@@ -103,12 +113,26 @@ class CourseController extends Controller
 
         $query = Course::with(['teacher.user', 'subject']);
 
-        // Filtrage rôle : Seul l'admin peut voir les cours inactifs
-        if ($userRole !== 'admin') {
+        // 1. FILTRAGE PAR RÔLE & VISIBILITÉ DES COURS INACTIFS
+        if ($userRole === 'admin') {
+            // L'admin voit TOUS les cours (actifs et inactifs)
+        } elseif ($userRole === 'teacher') {
+            // L'enseignant voit les cours ACTIFS + SES PROPRES COURS (même inactifs)
+            $teacher = Teacher::where('user_id', $user->id)->first();
+            $teacherId = $teacher ? $teacher->id : null;
+
+            $query->where(function ($q) use ($teacherId) {
+                $q->where('active', true);
+                if ($teacherId) {
+                    $q->orWhere('teacher_id', $teacherId);
+                }
+            });
+        } else {
+            // Les élèves et visiteurs ne voient QUE les cours actifs
             $query->where('active', true);
         }
 
-        // Restriction : Seuls les élèves voient un contenu restreint à leur classe
+        // 2. RESTRICTIONS SPÉCIFIQUES AUX ÉLÈVES ET FILTRES REQUÊTE
         if ($userRole === 'student') {
             $student = $user->studentProfile;
 
@@ -123,7 +147,7 @@ class CourseController extends Controller
                 ]);
             }
         } else {
-            // Pour l'admin et les enseignants, le filtrage par niveau/classe est optionnel
+            // Filtrage optionnel par niveau et classe pour admins/enseignants
             if ($request->filled('level')) {
                 $query->where('level', $request->level);
             }
@@ -133,10 +157,9 @@ class CourseController extends Controller
             }
         }
 
-        // Pagination
-        $courses = $query->paginate(20);
+        // 3. PAGINATION ET FORMATAGE
+        $courses = $query->latest()->paginate(20);
 
-        // Transformation propre
         $formattedCourses = collect($courses->items())->map(function ($course) {
             return $this->formatCourseData($course);
         });
@@ -161,7 +184,10 @@ class CourseController extends Controller
         $request->validate([
             'title'       => 'required|string',
             'description' => 'required|string',
-            'file'        => 'required|file|max:51200',
+            // 🔥 FIX : on n'acceptait que "file|max:51200" -> n'importe quel type de fichier
+            // (json, image, exe...) était accepté comme "cours". On restreint désormais
+            // aux formats réellement consultables par l'app (PDF en priorité).
+            'file'        => self::FILE_VALIDATION_RULE,
             'subject_id'  => 'nullable',
             'subject'     => 'nullable',
             'level'       => 'nullable|string',
@@ -296,6 +322,18 @@ class CourseController extends Controller
             ], 403);
         }
 
+        // 🔥 FIX : update() n'appelait aucune validation auparavant.
+        // On valide maintenant les champs texte (optionnels ici car update partiel)
+        // et surtout le fichier, s'il est fourni, avec la même règle mimes que store().
+        $request->validate([
+            'title'       => 'sometimes|string',
+            'description' => 'sometimes|string',
+            'level'       => 'nullable|string',
+            'class'       => 'nullable|string',
+            'classe'      => 'nullable|string',
+            'file'        => self::FILE_VALIDATION_RULE_OPTIONAL,
+        ]);
+
         $rawSubject = $request->input('subject_id') ?? $request->input('subject');
         $targetSubjectId = $course->subject_id;
         $inputSubjectName = '';
@@ -380,23 +418,53 @@ class CourseController extends Controller
 
         $userRole = $user ? mb_strtolower(trim($user->role)) : null;
 
-        // AUTORISATION : L'admin et l'enseignant créateur peuvent télécharger le cours inactif
         $isAdmin = $userRole === 'admin';
         $isOwnerTeacher = $userRole === 'teacher' && $course->teacher?->user_id === $user?->id;
 
+        // 1. Vérification si le cours est actif
         if (!$course->active && !$isAdmin && !$isOwnerTeacher) {
             return response()->json([
-                'message' => 'Cours non validé'
+                'message' => 'Cours non validé par l\'administration'
             ], 403);
         }
 
-        // Restriction d'accès selon le profil étudiant
+        // 2. Vérification pour les élèves
         if ($userRole === 'student') {
-            $student = $user->studentProfile;
+            // Charger la relation profil étudiant si elle existe
+            $studentProfile = $user->studentProfile ?? $user->student ?? null;
 
-            if ($student && ($course->level !== $student->niveau || $course->class !== $student->classe)) {
+            // Récupération des valeurs depuis $user OU depuis la relation du profil
+            $rawUserLevel = $user->niveau ?? $user->level ?? $studentProfile?->niveau ?? $studentProfile?->level ?? '';
+            $rawUserClass = $user->classe ?? $user->class ?? $studentProfile?->classe ?? $studentProfile?->class ?? '';
+
+            // Helper pour nettoyer et normaliser les chaînes
+            $cleanStr = function ($str) {
+                if (!$str) return '';
+                $str = mb_strtolower(trim((string)$str));
+                $str = str_replace(['è', 'é', 'ê', 'ë', 'à', 'â', 'ô'], ['e', 'e', 'e', 'e', 'a', 'a', 'o'], $str);
+                return $str;
+            };
+
+            $userLevel  = $cleanStr($rawUserLevel);
+            $userClass  = $cleanStr($rawUserClass);
+
+            $courseLevel = $cleanStr($course->level ?? '');
+            $courseClass = $cleanStr($course->class ?? '');
+
+            // Tolerances de correspondance
+            $levelMatches = ($courseLevel === $userLevel)
+                || empty($courseLevel)
+                || $courseLevel === 'tous niveaux'
+                || $courseLevel === 'tous';
+
+            $classMatches = ($courseClass === $userClass)
+                || empty($courseClass)
+                || $courseClass === 'toutes'
+                || $courseClass === 'toutes les classes';
+
+            if (!$levelMatches || !$classMatches) {
                 return response()->json([
-                    'message' => 'Accès interdit'
+                    'message' => "Accès interdit : Niveau/Classe non correspondant. (Cours: '{$course->level}' / '{$course->class}' vs Élève: '{$rawUserLevel}' / '{$rawUserClass}')"
                 ], 403);
             }
         }

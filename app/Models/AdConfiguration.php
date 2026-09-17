@@ -13,6 +13,7 @@ class AdConfiguration extends Model
         'show_ads',
         'banner_ad_unit_id',
         'interstitial_ad_unit_id',
+        'tutor_contact_phone',
     ];
 
     protected $casts = [
