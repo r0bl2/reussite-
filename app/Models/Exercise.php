@@ -6,17 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Exercise extends Model
 {
-    // C'est ICI que Laravel décide ce qu'il a le droit d'écrire en base
-    protected $fillable = [
-        'teacher_id',
-        'subject_id',
-        'title',
-        'niveau',
-        'classe',
-        'file_path',
-        'correction_path',
-        'active',
-    ];
+    protected $fillable = ['teacher_id', 'subject_id', 'title', 'niveau', 'classe', 'file_path', 'correction_path', 'active'];
+
+    protected $casts = ['active' => 'boolean'];
 
     public function teacher()
     {
@@ -25,7 +17,6 @@ class Exercise extends Model
 
     public function subject()
     {
-        // Si ton modèle s'appelle 'Subject', ajuste le nom de la classe si nécessaire
-        return $this->belongsTo(Subject::class, 'subject_id'); 
+        return $this->belongsTo(Subject::class, 'subject_id');
     }
 }

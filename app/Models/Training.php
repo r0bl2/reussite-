@@ -6,11 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Training extends Model
 {
-    protected $fillable = [
-        'institution_id',
-        'name',
-        'level'
-    ];
+    protected $fillable = ['institution_id', 'name', 'description', 'level'];
 
     public function institution()
     {

@@ -41,7 +41,6 @@ class NewsController extends Controller
         if ($request->hasFile('cover_image')) {
             $validated['cover_image'] = $request->file('cover_image')->store('news/covers', 'public');
         }
-
         if ($request->hasFile('attachment')) {
             $validated['attachment'] = $request->file('attachment')->store('news/attachments', 'public');
         }
@@ -72,7 +71,6 @@ class NewsController extends Controller
             }
             $validated['cover_image'] = $request->file('cover_image')->store('news/covers', 'public');
         }
-
         if ($request->hasFile('attachment')) {
             if ($news->attachment) {
                 Storage::disk('public')->delete($news->attachment);
