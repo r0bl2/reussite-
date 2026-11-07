@@ -15,7 +15,7 @@ class NewsController extends Controller
         if ($request->filled('q')) {
             $query->where('title', 'like', '%' . $request->q . '%');
         }
-        $news = $query->latest()->paginate(15);
+        $news = $query->latest()->paginate(10);
         $news->appends($request->query());
 
         return view('admin.news.index', compact('news'));

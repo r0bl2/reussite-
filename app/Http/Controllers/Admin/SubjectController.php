@@ -26,7 +26,7 @@ class SubjectController extends Controller
             $query->where('type_lycee', $request->type_lycee);
         }
 
-        $subjects = $query->orderBy('name')->paginate(15)->withQueryString();
+        $subjects = $query->orderBy('name')->paginate(10)->withQueryString();
 
         return view('admin.subjects.index', ['subjects' => $subjects, 'types' => self::TYPES]);
     }

@@ -27,7 +27,7 @@ class CourseController extends Controller
             $query->where('active', $request->status === 'active');
         }
 
-        $courses = $query->latest()->paginate(15);
+        $courses = $query->latest()->paginate(10);
         $courses->appends($request->query());
         $subjects = Subject::orderBy('name')->get();
 

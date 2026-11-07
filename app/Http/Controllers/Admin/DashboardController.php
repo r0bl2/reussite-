@@ -3,29 +3,46 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Course;
-use App\Models\Exercise;
-use App\Models\HomeTutorDemand;
-use App\Models\Subject;
-use App\Models\Summary;
-use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DashboardController extends Controller
 {
     public function index()
     {
-        $stats = [
-            'students'          => User::where('role', 'student')->count(),
-            'teachers'          => User::where('role', 'teacher')->count(),
-            'subjects'          => Subject::count(),
-            'courses'           => Course::count(),
-            'courses_pending'   => Course::where('active', false)->count(),
-            'summaries'         => Summary::count(),
-            'summaries_pending' => Summary::where('active', false)->count(),
-            'exercises'         => Exercise::count(),
-            'demands_pending'   => HomeTutorDemand::where('status', 'pending')->count(),
+        $papers = Schema::hasTable('exam_papers');
+
+        $cards = [
+            ['Élèves', DB::table('users')->where('role', 'student')->count(), 'primary'],
+            ['Enseignants', DB::table('users')->where('role', 'teacher')->count(), 'success'],
+            ['Matières', DB::table('subjects')->count(), 'info'],
+            ['Cours', DB::table('courses')->count(), 'warning'],
+            ['Résumés', DB::table('summaries')->count(), 'secondary'],
+            ['Exercices', DB::table('exercises')->count(), 'dark'],
         ];
 
-        return view('admin.dashboard', compact('stats'));
+        $chart = [
+            'labels'  => ['Cours', 'Résumés', 'Exercices', 'Épreuves'],
+            'actifs'  => [
+                DB::table('courses')->where('active', 1)->count(),
+                DB::table('summaries')->where('active', 1)->count(),
+                DB::table('exercises')->where('active', 1)->count(),
+                $papers ? DB::table('exam_papers')->where('status', 'approved')->count() : 0,
+            ],
+            'attente' => [
+                DB::table('courses')->where('active', 0)->count(),
+                DB::table('summaries')->where('active', 0)->count(),
+                DB::table('exercises')->where('active', 0)->count(),
+                $papers ? DB::table('exam_papers')->where('status', 'pending')->count() : 0,
+            ],
+        ];
+
+        $demands = [
+            DB::table('home_tutor_demands')->where('status', 'pending')->count(),
+            DB::table('home_tutor_demands')->where('status', 'approved')->count(),
+            DB::table('home_tutor_demands')->where('status', 'rejected')->count(),
+        ];
+
+        return view('admin.dashboard', compact('cards', 'chart', 'demands'));
     }
 }

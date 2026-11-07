@@ -11,7 +11,7 @@ class BannerController extends Controller
 {
     public function index()
     {
-        $banners = Banner::orderBy('order')->paginate(15);
+        $banners = Banner::orderBy('order')->paginate(10);
 
         return view('admin.banners.index', compact('banners'));
     }

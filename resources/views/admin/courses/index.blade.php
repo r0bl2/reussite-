@@ -16,22 +16,19 @@
                     <option value="{{ $s->id }}" @selected(request('subject_id') == $s->id)>{{ $s->name }} ({{ $typeLabels[$s->type_lycee] ?? '—' }})</option>
                 @endforeach
             </select>
-            <input type="text" name="level" value="{{ request('level') }}" class="form-control form-control-sm w-auto" placeholder="Niveau">
+            @include('admin.partials.level-filter', ['name' => 'level'])
             <select name="status" class="form-select form-select-sm w-auto">
                 <option value="">Tous statuts</option>
                 <option value="active" @selected(request('status') === 'active')>Actifs</option>
-                <option value="inactive" @selected(request('status') === 'inactive')>En attente / inactifs</option>
+                <option value="inactive" @selected(request('status') === 'inactive')>En attente</option>
             </select>
             <button class="btn btn-sm btn-primary">Filtrer</button>
             <a href="{{ route('courses.create') }}" class="btn btn-sm btn-success"><i class="bi bi-plus-lg"></i> Ajouter</a>
         </form>
     </div>
-
     <div class="card-body p-0 table-responsive">
-        <table class="table table-striped align-middle mb-0">
-            <thead>
-                <tr><th>#</th><th>Titre</th><th>Matière</th><th>Niveau / Classe</th><th>Auteur</th><th>Statut</th><th class="text-end">Actions</th></tr>
-            </thead>
+        <table class="table table-sm mb-0">
+            <thead><tr><th>#</th><th>Titre</th><th>Matière</th><th>Niveau / Classe</th><th>Auteur</th><th>Statut</th><th class="text-end">Actions</th></tr></thead>
             <tbody>
             @forelse($courses as $c)
                 <tr>
@@ -42,10 +39,7 @@
                     <td>{{ $c->teacher?->user?->username ?? 'Administration' }}</td>
                     <td><span class="badge {{ $c->active ? 'text-bg-success' : 'text-bg-warning' }}">{{ $c->active ? 'Actif' : 'En attente' }}</span></td>
                     <td class="text-end text-nowrap">
-                        <form method="POST" action="{{ route('courses.toggle', $c) }}" class="d-inline">
-                            @csrf @method('PUT')
-                            <button class="btn btn-sm {{ $c->active ? 'btn-outline-warning' : 'btn-outline-success' }}">{{ $c->active ? 'Désactiver' : 'Valider' }}</button>
-                        </form>
+                        @include('admin.partials.toggle-btn', ['route' => route('courses.toggle', $c), 'active' => $c->active])
                         <a href="{{ route('courses.download', $c) }}" class="btn btn-sm btn-outline-secondary" title="Télécharger"><i class="bi bi-download"></i></a>
                         <a href="{{ route('courses.edit', $c) }}" class="btn btn-sm btn-outline-primary" title="Modifier"><i class="bi bi-pencil"></i></a>
                         <form method="POST" action="{{ route('courses.destroy', $c) }}" class="d-inline" onsubmit="return confirm('Supprimer ce cours ?')">
@@ -55,7 +49,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="7" class="text-center text-muted py-4">Aucun cours.</td></tr>
+                <tr><td colspan="7" class="text-center text-muted">Aucun cours.</td></tr>
             @endforelse
             </tbody>
         </table>

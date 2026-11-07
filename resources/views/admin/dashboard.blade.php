@@ -4,29 +4,54 @@
 @section('page_title', 'Tableau de bord')
 
 @section('content')
-<div class="row">
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-primary"><div class="inner"><h3>{{ $stats['students'] }}</h3><p>Élèves</p></div></div>
-    </div>
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-success"><div class="inner"><h3>{{ $stats['teachers'] }}</h3><p>Gestion enseignant</p></div></div>
-    </div>
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-info"><div class="inner"><h3>{{ $stats['subjects'] }}</h3><p>Matières</p></div></div>
-    </div>
-    <div class="col-lg-3 col-6">
-        <div class="small-box text-bg-danger"><div class="inner"><h3>{{ $stats['demands_pending'] }}</h3><p>Demandes en attente</p></div></div>
-    </div>
+<div class="row g-2 mb-2">
+    @foreach($cards as [$label, $value, $color])
+        <div class="col-lg-2 col-4">
+            <div class="border rounded bg-body text-center py-1">
+                <div class="fs-4 fw-bold text-{{ $color }}">{{ $value }}</div>
+                <div class="small text-muted">{{ $label }}</div>
+            </div>
+        </div>
+    @endforeach
 </div>
-<div class="row">
-    <div class="col-lg-4 col-12">
-        <div class="small-box text-bg-warning"><div class="inner"><h3>{{ $stats['courses'] }}</h3><p>Cours ({{ $stats['courses_pending'] }} en attente)</p></div></div>
+
+<div class="row g-2">
+    <div class="col-lg-8">
+        <div class="card mb-0">
+            <div class="card-header small fw-semibold">Contenus : actifs et en attente</div>
+            <div class="card-body p-2" style="height:260px"><canvas id="contentChart"></canvas></div>
+        </div>
     </div>
-    <div class="col-lg-4 col-12">
-        <div class="small-box text-bg-secondary"><div class="inner"><h3>{{ $stats['summaries'] }}</h3><p>Résumés ({{ $stats['summaries_pending'] }} en attente)</p></div></div>
-    </div>
-    <div class="col-lg-4 col-12">
-        <div class="small-box text-bg-dark"><div class="inner"><h3>{{ $stats['exercises'] }}</h3><p>Exercices</p></div></div>
+    <div class="col-lg-4">
+        <div class="card mb-0">
+            <div class="card-header small fw-semibold">Demandes de répétition</div>
+            <div class="card-body p-2" style="height:260px"><canvas id="demandChart"></canvas></div>
+        </div>
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('contentChart'), {
+    type: 'bar',
+    data: {
+        labels: @json($chart['labels']),
+        datasets: [
+            { label: 'Actifs', data: @json($chart['actifs']), backgroundColor: '#198754' },
+            { label: 'En attente', data: @json($chart['attente']), backgroundColor: '#ffc107' }
+        ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+});
+new Chart(document.getElementById('demandChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['En attente', 'Validées', 'Rejetées'],
+        datasets: [{ data: @json($demands), backgroundColor: ['#ffc107', '#198754', '#dc3545'] }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+});
+</script>
+@endpush

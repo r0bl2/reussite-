@@ -9,6 +9,21 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/source-sans-3@5.0.12/index.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="{{ asset('adminlte/dist/css/adminlte.min.css') }}">
+    <style>
+    .app-content-header{padding:.35rem 0}
+    .app-content-header h3{font-size:1.1rem;font-weight:600}
+    .app-content{padding-bottom:.25rem}
+    .card{margin-bottom:.5rem}
+    .card-header{padding:.35rem .6rem}
+    .card-footer{padding:.25rem .6rem}
+    .table{margin-bottom:0;font-size:.8rem}
+    .table>:not(caption)>*>*{padding:.15rem .5rem;line-height:1.25;border:1px solid var(--bs-border-color)}
+    .table thead th{background:var(--bs-tertiary-bg);font-weight:600;white-space:nowrap}
+    .table .btn{--bs-btn-padding-y:.05rem;--bs-btn-padding-x:.35rem;--bs-btn-font-size:.75rem}
+    .table .badge{font-size:.68rem;font-weight:500}
+    .pagination{margin:0}
+    .pagination .page-link{padding:.15rem .5rem;font-size:.8rem}
+</style>
     @stack('styles')
 </head>
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
@@ -81,6 +96,11 @@
                             <i class="nav-icon bi bi-file-text"></i><p>Résumés</p>
                         </a>
                     </li>
+                    <li class="nav-item">
+    <a href="{{ url('/dashboard/exam-papers') }}" class="nav-link {{ request()->is('dashboard/exam-papers*') ? 'active' : '' }}">
+        <i class="nav-icon bi bi-file-earmark-check"></i><p>Épreuves d'examen</p>
+    </a>
+</li>
 
                     <li class="nav-header">COMMUNAUTÉ</li>
                     <li class="nav-item">

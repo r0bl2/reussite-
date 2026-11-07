@@ -14,7 +14,7 @@ class HomeTutorDemandController extends Controller
         if ($request->filled('q')) {
             $query->where(fn ($q) => $q->where('last_name', 'like', '%' . $request->q . '%')->orWhere('first_name', 'like', '%' . $request->q . '%'));
         }
-        $demands = $query->latest()->paginate(15);
+        $demands = $query->latest()->paginate(10);
         $demands->appends($request->query());
 
         return view('admin.home-tutor-demands.index', compact('demands'));
@@ -26,7 +26,7 @@ class HomeTutorDemandController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-        $demands = $query->latest('updated_at')->paginate(15);
+        $demands = $query->latest('updated_at')->paginate(10);
         $demands->appends($request->query());
 
         return view('admin.home-tutor-demands.history', compact('demands'));

@@ -27,7 +27,7 @@ class SummaryController extends Controller
             $query->where('active', $request->status === 'active');
         }
 
-        $summaries = $query->latest()->paginate(15)->withQueryString();
+        $summaries = $query->latest()->paginate(10)->withQueryString();
         $subjects  = Subject::orderBy('name')->get();
 
         return view('admin.summaries.index', compact('summaries', 'subjects'));

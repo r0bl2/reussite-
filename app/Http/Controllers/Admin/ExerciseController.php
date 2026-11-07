@@ -19,14 +19,24 @@ class ExerciseController extends Controller
         if ($request->filled('subject_id')) {
             $query->where('subject_id', $request->subject_id);
         }
+        if ($request->filled('niveau')) {
+            $query->where('niveau', $request->niveau);
+        }
         if ($request->filled('status')) {
             $query->where('active', $request->status === 'active');
         }
-        $exercises = $query->latest()->paginate(15);
+        $exercises = $query->latest()->paginate(10);
         $exercises->appends($request->query());
         $subjects = Subject::orderBy('type_lycee')->orderBy('name')->get();
 
         return view('admin.exercises.index', compact('exercises', 'subjects'));
+    }
+
+    public function show(Exercise $exercise)
+    {
+        $exercise->load(['teacher', 'subject']);
+
+        return view('admin.exercises.show', compact('exercise'));
     }
 
     public function create()
@@ -42,18 +52,18 @@ class ExerciseController extends Controller
         $data = $request->validate([
             'title'      => 'required|string|max:255',
             'subject_id' => 'required|exists:subjects,id',
-            'niveau'     => 'nullable|string',
-            'classe'     => 'nullable|string',
+            'niveau'     => 'required|string',
+            'classe'     => 'required|string',
             'file'       => 'required|file|max:51200',
             'correction' => 'nullable|file|max:51200',
         ]);
 
         $data['file_path'] = $request->file('file')->store('exercises', 'public');
         if ($request->hasFile('correction')) {
-            $data['correction_path'] = $request->file('correction')->store('exercises/corrections', 'public');
+            $data['correction_path'] = $request->file('correction')->store('corrections', 'public');
         }
         unset($data['file'], $data['correction']);
-        $data['teacher_id'] = null;
+        $data['teacher_id'] = $request->user()->id;
         $data['active'] = true;
 
         Exercise::create($data);
@@ -74,8 +84,8 @@ class ExerciseController extends Controller
         $data = $request->validate([
             'title'      => 'required|string|max:255',
             'subject_id' => 'required|exists:subjects,id',
-           'niveau'     => 'required|string',
-            'classe'     => 'nullable|string',
+            'niveau'     => 'required|string',
+            'classe'     => 'required|string',
             'file'       => 'nullable|file|max:51200',
             'correction' => 'nullable|file|max:51200',
         ]);
@@ -86,7 +96,7 @@ class ExerciseController extends Controller
         }
         if ($request->hasFile('correction')) {
             $this->remove($exercise->correction_path);
-            $data['correction_path'] = $request->file('correction')->store('exercises/corrections', 'public');
+            $data['correction_path'] = $request->file('correction')->store('corrections', 'public');
         }
         unset($data['file'], $data['correction']);
 
@@ -101,6 +111,15 @@ class ExerciseController extends Controller
         $exercise->save();
 
         return back()->with('success', $exercise->active ? 'Exercice activé.' : 'Exercice désactivé.');
+    }
+
+    public function preview(Exercise $exercise, string $type)
+    {
+        $rel = $type === 'correction' ? $exercise->correction_path : $exercise->file_path;
+        $path = $rel ? storage_path('app/public/' . $rel) : null;
+        abort_unless($path && file_exists($path), 404, 'Fichier introuvable');
+
+        return response()->file($path);
     }
 
     public function download(Exercise $exercise, $type = 'file')
