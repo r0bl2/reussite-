@@ -23,7 +23,7 @@
         </form>
     </div>
     <div class="card-body p-0 table-responsive">
-        <table class="table table-striped align-middle mb-0">
+        <table class="table table-sm mb-0">
             <thead><tr><th>#</th><th>Titre</th><th>Matière</th><th>Niveau</th><th>Auteur</th><th>Statut</th><th>Date</th><th class="text-end">Actions</th></tr></thead>
             <tbody>
             @forelse($papers as $p)
@@ -33,26 +33,24 @@
                     <td>{{ $p->subject }}</td>
                     <td>{{ $p->level }}</td>
                     <td>{{ $p->author?->role === 'admin' ? 'Administration' : ($p->author->username ?? '-') }}</td>
-                    <td>
-                        <span class="badge {{ $labels[$p->status][1] ?? 'text-bg-secondary' }}">{{ $labels[$p->status][0] ?? $p->status }}</span>
-                        @if($p->rejection_reason)<div class="small text-muted">{{ $p->rejection_reason }}</div>@endif
-                    </td>
+                    <td><span class="badge {{ $labels[$p->status][1] ?? 'text-bg-secondary' }}">{{ $labels[$p->status][0] ?? $p->status }}</span></td>
                     <td>{{ $p->created_at?->format('d/m/Y') }}</td>
                     <td class="text-end text-nowrap">
-                        <a href="{{ route('exam-papers.download', $p) }}" class="btn btn-sm btn-outline-secondary" title="Télécharger"><i class="bi bi-download"></i></a>
                         @if($p->status !== 'approved')
                             <form method="POST" action="{{ route('exam-papers.approve', $p) }}" class="d-inline">
                                 @csrf @method('PUT')
-                                <button class="btn btn-sm btn-success">Valider</button>
+                                <button class="btn btn-sm btn-outline-success" title="Valider"><i class="bi bi-check-circle"></i></button>
                             </form>
                         @endif
                         @if($p->status !== 'rejected')
                             <form method="POST" action="{{ route('exam-papers.reject', $p) }}" class="d-inline" onsubmit="var r = prompt('Motif du rejet :'); if (!r) { return false; } this.rejection_reason.value = r; return true;">
                                 @csrf @method('PUT')
                                 <input type="hidden" name="rejection_reason">
-                                <button class="btn btn-sm btn-danger">Rejeter</button>
+                                <button class="btn btn-sm btn-outline-danger" title="Rejeter"><i class="bi bi-x-circle"></i></button>
                             </form>
                         @endif
+                        <a href="{{ route('exam-papers.show', $p) }}" class="btn btn-sm btn-outline-info" title="Voir détails"><i class="bi bi-eye"></i></a>
+                        <a href="{{ route('exam-papers.download', $p) }}" class="btn btn-sm btn-outline-secondary" title="Télécharger"><i class="bi bi-download"></i></a>
                         <form method="POST" action="{{ route('exam-papers.destroy', $p) }}" class="d-inline" onsubmit="return confirm('Supprimer cette épreuve ?')">
                             @csrf @method('DELETE')
                             <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
@@ -60,7 +58,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="8" class="text-center text-muted py-4">Aucune épreuve.</td></tr>
+                <tr><td colspan="8" class="text-center text-muted">Aucune épreuve.</td></tr>
             @endforelse
             </tbody>
         </table>

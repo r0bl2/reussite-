@@ -40,6 +40,7 @@
                     <td><span class="badge {{ $c->active ? 'text-bg-success' : 'text-bg-warning' }}">{{ $c->active ? 'Actif' : 'En attente' }}</span></td>
                     <td class="text-end text-nowrap">
                         @include('admin.partials.toggle-btn', ['route' => route('courses.toggle', $c), 'active' => $c->active])
+                        <a href="{{ route('courses.show', $c) }}" class="btn btn-sm btn-outline-info" title="Voir détails"><i class="bi bi-eye"></i></a>
                         <a href="{{ route('courses.download', $c) }}" class="btn btn-sm btn-outline-secondary" title="Télécharger"><i class="bi bi-download"></i></a>
                         <a href="{{ route('courses.edit', $c) }}" class="btn btn-sm btn-outline-primary" title="Modifier"><i class="bi bi-pencil"></i></a>
                         <form method="POST" action="{{ route('courses.destroy', $c) }}" class="d-inline" onsubmit="return confirm('Supprimer ce cours ?')">

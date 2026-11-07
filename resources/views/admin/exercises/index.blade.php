@@ -40,7 +40,7 @@
                     <td><span class="badge {{ $e->active ? 'text-bg-success' : 'text-bg-warning' }}">{{ $e->active ? 'Actif' : 'En attente' }}</span></td>
                     <td class="text-end text-nowrap">
                         @include('admin.partials.toggle-btn', ['route' => route('exercises.toggle', $e), 'active' => $e->active])
-                        <a href="{{ route('exercises.show', $e) }}" class="btn btn-sm btn-outline-info" title="Voir détails"><i class="bi bi-eye"></i> Voir détails</a>
+                        <a href="{{ route('exercises.show', $e) }}" class="btn btn-sm btn-outline-info" title="Voir détails"><i class="bi bi-eye"></i></a>
                         <a href="{{ route('exercises.edit', $e) }}" class="btn btn-sm btn-outline-primary" title="Modifier"><i class="bi bi-pencil"></i></a>
                         <form method="POST" action="{{ route('exercises.destroy', $e) }}" class="d-inline" onsubmit="return confirm('Supprimer cet exercice ?')">
                             @csrf @method('DELETE')

@@ -27,17 +27,25 @@ class SummaryController extends Controller
             $query->where('active', $request->status === 'active');
         }
 
-        $summaries = $query->latest()->paginate(10)->withQueryString();
-        $subjects  = Subject::orderBy('name')->get();
+        $summaries = $query->latest()->paginate(10);
+        $summaries->appends($request->query());
+        $subjects = Subject::orderBy('type_lycee')->orderBy('name')->get();
 
         return view('admin.summaries.index', compact('summaries', 'subjects'));
+    }
+
+    public function show(Summary $summary)
+    {
+        $summary->load(['teacher.user', 'subject']);
+
+        return view('admin.summaries.show', compact('summary'));
     }
 
     public function create()
     {
         return view('admin.summaries.form', [
             'summary'  => new Summary(),
-            'subjects' => Subject::orderBy('name')->get(),
+            'subjects' => Subject::orderBy('type_lycee')->orderBy('name')->get(),
         ]);
     }
 
@@ -66,7 +74,7 @@ class SummaryController extends Controller
     {
         return view('admin.summaries.form', [
             'summary'  => $summary,
-            'subjects' => Subject::orderBy('name')->get(),
+            'subjects' => Subject::orderBy('type_lycee')->orderBy('name')->get(),
         ]);
     }
 
@@ -102,10 +110,18 @@ class SummaryController extends Controller
         return back()->with('success', $summary->active ? 'Résumé activé.' : 'Résumé désactivé.');
     }
 
+    public function preview(Summary $summary)
+    {
+        $path = $summary->file_path ? storage_path('app/public/' . $summary->file_path) : null;
+        abort_unless($path && file_exists($path), 404, 'Fichier introuvable');
+
+        return response()->file($path);
+    }
+
     public function download(Summary $summary)
     {
-        $path = storage_path('app/public/' . $summary->file_path);
-        abort_unless($summary->file_path && file_exists($path), 404, 'Fichier introuvable');
+        $path = $summary->file_path ? storage_path('app/public/' . $summary->file_path) : null;
+        abort_unless($path && file_exists($path), 404, 'Fichier introuvable');
 
         return response()->download($path);
     }

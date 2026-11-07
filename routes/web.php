@@ -14,18 +14,14 @@ use App\Http\Controllers\Admin\TeacherController;
 use App\Http\Controllers\Api\AuthController;
 use Illuminate\Support\Facades\Route;
 
-// Inscription externe (application mobile)
 Route::post('/register', [AuthController::class, 'registerApi'])->name('inscription');
 
-// Redirections pratiques
 Route::redirect('/', '/dashboard');
 Route::redirect('/admin', '/dashboard');
 
-// Connexion administration
 Route::get('/dashboard/login', [AdminAuthController::class, 'showLogin'])->name('admin.login');
 Route::post('/dashboard/login', [AdminAuthController::class, 'login'])->name('admin.login.submit');
 
-// Espace d'administration protégé
 Route::middleware('admin')->prefix('dashboard')->group(function () {
 
     Route::get('/', [DashboardController::class, 'index'])->name('admin.dashboard');
@@ -34,28 +30,32 @@ Route::middleware('admin')->prefix('dashboard')->group(function () {
     // Actions spécifiques (toujours AVANT les resources)
     Route::put('courses/{course}/toggle', [CourseController::class, 'toggle'])->name('courses.toggle');
     Route::get('courses/{course}/download', [CourseController::class, 'download'])->name('courses.download');
+    Route::get('courses/{course}/preview', [CourseController::class, 'preview'])->name('courses.preview');
 
     Route::put('summaries/{summary}/toggle', [SummaryController::class, 'toggle'])->name('summaries.toggle');
     Route::get('summaries/{summary}/download', [SummaryController::class, 'download'])->name('summaries.download');
+    Route::get('summaries/{summary}/preview', [SummaryController::class, 'preview'])->name('summaries.preview');
 
     Route::put('exercises/{exercise}/toggle', [ExerciseController::class, 'toggle'])->name('exercises.toggle');
     Route::get('exercises/{exercise}/download/{type?}', [ExerciseController::class, 'download'])->name('exercises.download');
+    Route::get('exercises/{exercise}/preview/{type}', [ExerciseController::class, 'preview'])->name('exercises.preview');
 
     Route::put('exam-papers/{exam_paper}/approve', [ExamPaperController::class, 'approve'])->name('exam-papers.approve');
     Route::put('exam-papers/{exam_paper}/reject', [ExamPaperController::class, 'reject'])->name('exam-papers.reject');
     Route::get('exam-papers/{exam_paper}/download', [ExamPaperController::class, 'download'])->name('exam-papers.download');
+    Route::get('exam-papers/{exam_paper}/preview', [ExamPaperController::class, 'preview'])->name('exam-papers.preview');
 
     Route::get('home-tutor-history', [HomeTutorDemandController::class, 'history'])->name('home-tutor-demands.history');
     Route::put('home-tutor-demands/{home_tutor_demand}/validate', [HomeTutorDemandController::class, 'approve'])->name('home-tutor-demands.validate');
     Route::put('home-tutor-demands/{home_tutor_demand}/reject', [HomeTutorDemandController::class, 'reject'])->name('home-tutor-demands.reject');
     Route::get('home-tutor-demands/{home_tutor_demand}/file/{field}', [HomeTutorDemandController::class, 'file'])->name('home-tutor-demands.file');
-    Route::get('exercises/{exercise}/preview/{type}', [ExerciseController::class, 'preview'])->name('exercises.preview');
+
     // Pédagogie et contenus
     Route::resource('subjects', SubjectController::class)->except(['show']);
-    Route::resource('courses', CourseController::class)->except(['show']);
+    Route::resource('courses', CourseController::class);
     Route::resource('exercises', ExerciseController::class);
-    Route::resource('summaries', SummaryController::class)->except(['show']);
-    Route::resource('exam-papers', ExamPaperController::class)->only(['index', 'create', 'store', 'destroy']);
+    Route::resource('summaries', SummaryController::class);
+    Route::resource('exam-papers', ExamPaperController::class)->only(['index', 'create', 'store', 'show', 'destroy']);
 
     // Communauté
     Route::resource('teachers', TeacherController::class)->only(['index']);

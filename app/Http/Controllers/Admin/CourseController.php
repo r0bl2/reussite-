@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Storage;
 
 class CourseController extends Controller
 {
+    private const LEVELS = '6ème,5ème,4ème,3ème,Seconde,Première,Terminale';
+
     public function index(Request $request)
     {
         $query = Course::with(['teacher.user', 'subject']);
@@ -29,16 +31,23 @@ class CourseController extends Controller
 
         $courses = $query->latest()->paginate(10);
         $courses->appends($request->query());
-        $subjects = Subject::orderBy('name')->get();
+        $subjects = Subject::orderBy('type_lycee')->orderBy('name')->get();
 
         return view('admin.courses.index', compact('courses', 'subjects'));
+    }
+
+    public function show(Course $course)
+    {
+        $course->load(['teacher.user', 'subject']);
+
+        return view('admin.courses.show', compact('course'));
     }
 
     public function create()
     {
         return view('admin.courses.form', [
             'course'   => new Course(),
-            'subjects' => Subject::orderBy('name')->get(),
+            'subjects' => Subject::orderBy('type_lycee')->orderBy('name')->get(),
         ]);
     }
 
@@ -49,11 +58,11 @@ class CourseController extends Controller
             'description' => 'required|string',
             'file'        => 'required|file|max:51200',
             'subject_id'  => 'required|exists:subjects,id',
-            'level'       => 'nullable|string',
+            'level'       => 'nullable|in:' . self::LEVELS,
             'class'       => 'nullable|string',
         ]);
 
-        $data['file_path'] = $request->file('file')->store('courses', 'public');
+        $data['file_path']  = $request->file('file')->store('courses', 'public');
         unset($data['file']);
         $data['teacher_id'] = null;
         $data['active']     = true;
@@ -67,7 +76,7 @@ class CourseController extends Controller
     {
         return view('admin.courses.form', [
             'course'   => $course,
-            'subjects' => Subject::orderBy('name')->get(),
+            'subjects' => Subject::orderBy('type_lycee')->orderBy('name')->get(),
         ]);
     }
 
@@ -78,7 +87,7 @@ class CourseController extends Controller
             'description' => 'required|string',
             'file'        => 'nullable|file|max:51200',
             'subject_id'  => 'required|exists:subjects,id',
-            'level'       => 'nullable|string',
+            'level'       => 'nullable|in:' . self::LEVELS,
             'class'       => 'nullable|string',
         ]);
 
@@ -103,10 +112,18 @@ class CourseController extends Controller
         return back()->with('success', $course->active ? 'Cours activé.' : 'Cours désactivé.');
     }
 
+    public function preview(Course $course)
+    {
+        $path = $course->file_path ? storage_path('app/public/' . $course->file_path) : null;
+        abort_unless($path && file_exists($path), 404, 'Fichier introuvable');
+
+        return response()->file($path);
+    }
+
     public function download(Course $course)
     {
-        $path = storage_path('app/public/' . $course->file_path);
-        abort_unless($course->file_path && file_exists($path), 404, 'Fichier introuvable');
+        $path = $course->file_path ? storage_path('app/public/' . $course->file_path) : null;
+        abort_unless($path && file_exists($path), 404, 'Fichier introuvable');
 
         return response()->download($path);
     }

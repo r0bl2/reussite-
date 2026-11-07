@@ -26,6 +26,13 @@ class ExamPaperController extends Controller
         return view('admin.exam-papers.index', compact('papers'));
     }
 
+    public function show(ExamPaper $examPaper)
+    {
+        $examPaper->load('author');
+
+        return view('admin.exam-papers.show', ['paper' => $examPaper]);
+    }
+
     public function create()
     {
         return view('admin.exam-papers.form', ['levels' => self::LEVELS]);
@@ -74,10 +81,18 @@ class ExamPaperController extends Controller
         return back()->with('success', 'Épreuve rejetée.');
     }
 
+    public function preview(ExamPaper $examPaper)
+    {
+        $path = $examPaper->file_path ? storage_path('app/public/' . $examPaper->file_path) : null;
+        abort_unless($path && file_exists($path), 404, 'Fichier introuvable');
+
+        return response()->file($path);
+    }
+
     public function download(ExamPaper $examPaper)
     {
-        $path = storage_path('app/public/' . $examPaper->file_path);
-        abort_unless($examPaper->file_path && file_exists($path), 404, 'Fichier introuvable');
+        $path = $examPaper->file_path ? storage_path('app/public/' . $examPaper->file_path) : null;
+        abort_unless($path && file_exists($path), 404, 'Fichier introuvable');
 
         return response()->download($path);
     }

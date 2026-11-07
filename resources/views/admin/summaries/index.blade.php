@@ -40,6 +40,7 @@
                     <td><span class="badge {{ $s->active ? 'text-bg-success' : 'text-bg-warning' }}">{{ $s->active ? 'Actif' : 'En attente' }}</span></td>
                     <td class="text-end text-nowrap">
                         @include('admin.partials.toggle-btn', ['route' => route('summaries.toggle', $s), 'active' => $s->active])
+                        <a href="{{ route('summaries.show', $s) }}" class="btn btn-sm btn-outline-info" title="Voir détails"><i class="bi bi-eye"></i></a>
                         <a href="{{ route('summaries.download', $s) }}" class="btn btn-sm btn-outline-secondary" title="Télécharger"><i class="bi bi-download"></i></a>
                         <a href="{{ route('summaries.edit', $s) }}" class="btn btn-sm btn-outline-primary" title="Modifier"><i class="bi bi-pencil"></i></a>
                         <form method="POST" action="{{ route('summaries.destroy', $s) }}" class="d-inline" onsubmit="return confirm('Supprimer ce résumé ?')">
