@@ -16,6 +16,11 @@ class BannerController extends Controller
         return view('admin.banners.index', compact('banners'));
     }
 
+    public function show(Banner $banner)
+    {
+        return view('admin.banners.show', compact('banner'));
+    }
+
     public function create()
     {
         return view('admin.banners.form', ['banner' => new Banner()]);
@@ -77,7 +82,7 @@ class BannerController extends Controller
             'title'      => 'nullable|string|max:255',
             'type'       => 'required|in:image,video',
             'media'      => 'nullable|file|mimes:jpeg,png,jpg,gif,mp4|max:10240',
-            'media_url'  => 'nullable|string',
+            'media_url'  => 'required_without:media|nullable|string',
             'target_url' => 'nullable|string',
             'order'      => 'nullable|integer',
         ]);

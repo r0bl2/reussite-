@@ -55,7 +55,7 @@ class CourseController extends Controller
     {
         $data = $request->validate([
             'title'       => 'required|string|max:255',
-            'description' => 'required|string',
+            'description' => 'nullable|string',
             'file'        => 'required|file|max:51200',
             'subject_id'  => 'required|exists:subjects,id',
             'level'       => 'nullable|in:' . self::LEVELS,
@@ -84,7 +84,7 @@ class CourseController extends Controller
     {
         $data = $request->validate([
             'title'       => 'required|string|max:255',
-            'description' => 'required|string',
+            'description' => 'nullable|string',
             'file'        => 'nullable|file|max:51200',
             'subject_id'  => 'required|exists:subjects,id',
             'level'       => 'nullable|in:' . self::LEVELS,

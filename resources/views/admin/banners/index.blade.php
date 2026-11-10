@@ -27,6 +27,7 @@
                     <td><span class="badge {{ $b->is_active ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $b->is_active ? 'Active' : 'Inactive' }}</span></td>
                     <td class="text-end text-nowrap">
                         <a href="{{ route('banners.edit', $b) }}" class="btn btn-sm btn-outline-primary" title="Modifier"><i class="bi bi-pencil"></i></a>
+                        <a href="{{ route('banners.show', $b) }}" class="btn btn-sm btn-outline-info" title="Voir détails"><i class="bi bi-eye"></i></a>
                         <form method="POST" action="{{ route('banners.destroy', $b) }}" class="d-inline" onsubmit="return confirm('Supprimer cette bannière ?')">
                             @csrf @method('DELETE')
                             <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>

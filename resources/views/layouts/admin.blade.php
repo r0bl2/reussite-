@@ -23,6 +23,10 @@
         .table .badge{font-size:.68rem;font-weight:500}
         .pagination{margin:0}
         .pagination .page-link{padding:.15rem .5rem;font-size:.8rem}
+        .app-sidebar .sidebar-menu > .nav-item > .nav-link{position:relative;padding-right:2.4rem}
+        .app-sidebar .sidebar-menu > .nav-item > .nav-link > p{margin:0;white-space:normal;line-height:1.25;overflow:visible}
+        .app-sidebar .sidebar-menu > .nav-item > .nav-link::after{content:"\F285";font-family:"bootstrap-icons";position:absolute;right:.9rem;top:50%;transform:translateY(-50%);font-size:.8rem;line-height:1;transition:transform .2s}
+        .app-sidebar .sidebar-menu > .nav-item.menu-open > .nav-link::after{transform:translateY(-50%) rotate(90deg)}
     </style>
     @stack('styles')
 </head>
@@ -70,7 +74,7 @@
                     <li class="nav-item {{ $gDash ? 'menu-open' : '' }}">
                         <a href="#" class="nav-link {{ $gDash ? 'active' : '' }}">
                             <i class="nav-icon bi bi-speedometer2"></i>
-                            <p>Tableau de bord <i class="nav-arrow bi bi-chevron-right"></i></p>
+                            <p>Tableau de bord </p>
                         </a>
                         <ul class="nav nav-treeview">
                             <li class="nav-item"><a href="{{ url('/dashboard') }}" class="nav-link {{ request()->is('dashboard') ? 'active' : '' }}"><i class="nav-icon bi bi-circle"></i><p>Vue d'ensemble</p></a></li>
@@ -80,7 +84,7 @@
                     <li class="nav-item {{ $gPed ? 'menu-open' : '' }}">
                         <a href="#" class="nav-link {{ $gPed ? 'active' : '' }}">
                             <i class="nav-icon bi bi-mortarboard"></i>
-                            <p>Pédagogie & contenus <i class="nav-arrow bi bi-chevron-right"></i></p>
+                            <p>Pédagogie & contenus </p>
                         </a>
                         <ul class="nav nav-treeview">
                             <li class="nav-item"><a href="{{ url('/dashboard/subjects') }}" class="nav-link {{ request()->is('dashboard/subjects*') ? 'active' : '' }}"><i class="nav-icon bi bi-circle"></i><p>Matières</p></a></li>
@@ -94,7 +98,7 @@
                     <li class="nav-item {{ $gCom ? 'menu-open' : '' }}">
                         <a href="#" class="nav-link {{ $gCom ? 'active' : '' }}">
                             <i class="nav-icon bi bi-people"></i>
-                            <p>Communauté <i class="nav-arrow bi bi-chevron-right"></i></p>
+                            <p>Communauté </p>
                         </a>
                         <ul class="nav nav-treeview">
                             <li class="nav-item"><a href="{{ url('/dashboard/teachers') }}" class="nav-link {{ request()->is('dashboard/teachers*') ? 'active' : '' }}"><i class="nav-icon bi bi-circle"></i><p>Gestion enseignant</p></a></li>
@@ -106,7 +110,7 @@
                     <li class="nav-item {{ $gComm ? 'menu-open' : '' }}">
                         <a href="#" class="nav-link {{ $gComm ? 'active' : '' }}">
                             <i class="nav-icon bi bi-megaphone"></i>
-                            <p>Communication & config <i class="nav-arrow bi bi-chevron-right"></i></p>
+                            <p>Communication & config </p>
                         </a>
                         <ul class="nav nav-treeview">
                             <li class="nav-item"><a href="{{ url('/dashboard/news') }}" class="nav-link {{ request()->is('dashboard/news*') ? 'active' : '' }}"><i class="nav-icon bi bi-circle"></i><p>Actualités</p></a></li>

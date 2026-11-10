@@ -19,8 +19,8 @@
                 <input type="text" name="title" class="form-control" value="{{ old('title', $summary->title) }}" required>
             </div>
             <div class="mb-3">
-                <label class="form-label">Description *</label>
-                <textarea name="description" rows="4" class="form-control" required>{{ old('description', $summary->description) }}</textarea>
+                <label class="form-label">Description</label>
+                <textarea name="description" rows="4" class="form-control">{{ old('description', $summary->description) }}</textarea>
             </div>
             <div class="row">
                 <div class="col-md-3 mb-3">

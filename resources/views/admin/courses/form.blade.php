@@ -1,4 +1,4 @@
-﻿@extends('layouts.admin')
+@extends('layouts.admin')
 
 @php
     $isEdit = $course->exists;
@@ -19,8 +19,8 @@
                 <input type="text" name="title" class="form-control" value="{{ old('title', $course->title) }}" required>
             </div>
             <div class="mb-3">
-                <label class="form-label">Description *</label>
-                <textarea name="description" rows="4" class="form-control" required>{{ old('description', $course->description) }}</textarea>
+                <label class="form-label">Description</label>
+                <textarea name="description" rows="4" class="form-control">{{ old('description', $course->description) }}</textarea>
             </div>
             <div class="row">
                 <div class="col-md-3 mb-3">

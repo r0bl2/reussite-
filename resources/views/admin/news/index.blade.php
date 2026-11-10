@@ -25,6 +25,7 @@
                     <td><span class="badge {{ $n->is_published ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $n->is_published ? 'Publié' : 'Brouillon' }}</span></td>
                     <td class="text-end text-nowrap">
                         <a href="{{ route('news.edit', $n) }}" class="btn btn-sm btn-outline-primary" title="Modifier"><i class="bi bi-pencil"></i></a>
+                        <a href="{{ route('news.show', $n) }}" class="btn btn-sm btn-outline-info" title="Voir détails"><i class="bi bi-eye"></i></a>
                         <form method="POST" action="{{ route('news.destroy', $n) }}" class="d-inline" onsubmit="return confirm('Supprimer cette actualité ?')">
                             @csrf @method('DELETE')
                             <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>

@@ -62,6 +62,6 @@ Route::middleware('admin')->prefix('dashboard')->group(function () {
     Route::resource('home-tutor-demands', HomeTutorDemandController::class)->only(['index', 'show']);
 
     // Communication
-    Route::resource('news', NewsController::class)->except(['show']);
-    Route::resource('banners', BannerController::class)->except(['show']);
+    Route::resource('news', NewsController::class);
+    Route::resource('banners', BannerController::class);
 });
