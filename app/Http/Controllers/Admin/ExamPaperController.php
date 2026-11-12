@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ExamPaper;
+use App\Models\Subject; // <--- 1. Importez le modèle Subject ici
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -35,7 +36,13 @@ class ExamPaperController extends Controller
 
     public function create()
     {
-        return view('admin.exam-papers.form', ['levels' => self::LEVELS]);
+        // 2. Récupérez toutes les matières triées par nom
+        $subjects = Subject::orderBy('name')->get();
+
+        return view('admin.exam-papers.form', [
+            'levels'   => self::LEVELS,
+            'subjects' => $subjects // <--- Transmettez-les à la vue
+        ]);
     }
 
     public function store(Request $request)
@@ -43,13 +50,15 @@ class ExamPaperController extends Controller
         $data = $request->validate([
             'title'       => 'required|string|max:255',
             'description' => 'nullable|string',
-            'subject'     => 'required|string|max:255',
+            'subject'     => 'required|string|exists:subjects,name', // <--- 3. Vérifie que la matière existe dans la table subjects
             'level'       => 'required|in:' . implode(',', self::LEVELS),
             'file'        => 'required|file|max:51200',
         ]);
 
-        $data['file_path']   = $request->file('file')->store('exam-papers', 'public');
-        unset($data['file']);
+        if ($request->hasFile('file')) {
+            $data['file_path'] = $request->file('file')->store('exam-papers', 'public');
+        }
+
         $data['created_by']  = $request->user()->id;
         $data['status']      = 'approved';
         $data['reviewed_by'] = $request->user()->id;
