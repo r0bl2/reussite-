@@ -63,6 +63,7 @@ class SummaryController extends Controller
         $data['file_path'] = $request->file('file')->store('summaries', 'public');
         unset($data['file']);
         $data['description'] = $data['description'] ?? '';
+        $data['description'] = $data['description'] ?? '';
         $data['teacher_id'] = null;
         $data['active']     = true;
 
@@ -97,6 +98,7 @@ class SummaryController extends Controller
             $data['file_path'] = $request->file('file')->store('summaries', 'public');
         }
         unset($data['file']);
+        $data['description'] = $data['description'] ?? '';
         $data['description'] = $data['description'] ?? '';
 
         $summary->update($data);

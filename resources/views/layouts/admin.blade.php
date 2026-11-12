@@ -27,6 +27,8 @@
         .app-sidebar .sidebar-menu > .nav-item > .nav-link > p{margin:0;white-space:normal;line-height:1.25;overflow:visible}
         .app-sidebar .sidebar-menu > .nav-item > .nav-link::after{content:"\F285";font-family:"bootstrap-icons";position:absolute;right:.9rem;top:50%;transform:translateY(-50%);font-size:.8rem;line-height:1;transition:transform .2s}
         .app-sidebar .sidebar-menu > .nav-item.menu-open > .nav-link::after{transform:translateY(-50%) rotate(90deg)}
+        .app-sidebar .sidebar-menu > .nav-item > .nav-link > p{display:flex;align-items:center;justify-content:space-between;width:100%;margin:0;white-space:normal;line-height:1.2}
+        .app-sidebar .sidebar-menu .nav-arrow{position:static !important;margin-left:.5rem;flex-shrink:0}
     </style>
     @stack('styles')
 </head>
