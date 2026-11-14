@@ -8,7 +8,6 @@
     <div class="card-header">
         <form method="GET" class="d-flex gap-2 flex-wrap align-items-center">
             <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm w-auto" placeholder="Rechercher un titre">
-            <button class="btn btn-sm btn-primary">Filtrer</button>
             <a href="{{ route('news.create') }}" class="btn btn-sm btn-success"><i class="bi bi-plus-lg"></i> Ajouter</a>
         </form>
     </div>
@@ -23,13 +22,21 @@
                     <td>{{ $n->title }}</td>
                     <td>{{ $n->category ?? '-' }}</td>
                     <td><span class="badge {{ $n->is_published ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $n->is_published ? 'Publié' : 'Brouillon' }}</span></td>
-                    <td class="text-end text-nowrap">
-                        <a href="{{ route('news.edit', $n) }}" class="btn btn-sm btn-outline-primary" title="Modifier"><i class="bi bi-pencil"></i></a>
-                        <a href="{{ route('news.show', $n) }}" class="btn btn-sm btn-outline-info" title="Voir détails"><i class="bi bi-eye"></i></a>
-                        <form method="POST" action="{{ route('news.destroy', $n) }}" class="d-inline" onsubmit="return confirm('Supprimer cette actualité ?')">
-                            @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
-                        </form>
+                    <td class="text-end">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" aria-expanded="false" title="Actions"><i class="bi bi-three-dots-vertical"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{{ route('news.show', $n) }}"><i class="bi bi-eye"></i> Voir détails</a></li>
+                                <li><a class="dropdown-item" href="{{ route('news.edit', $n) }}"><i class="bi bi-pencil"></i> Modifier</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="POST" action="{{ route('news.destroy', $n) }}" onsubmit="return confirm('Supprimer cette actualité ?')">
+                                        @csrf @method('DELETE')
+                                        <button class="dropdown-item text-danger"><i class="bi bi-trash"></i> Supprimer</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
                     </td>
                 </tr>
             @empty

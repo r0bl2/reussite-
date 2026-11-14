@@ -1,4 +1,4 @@
-﻿@extends('layouts.admin')
+@extends('layouts.admin')
 
 @section('title', 'Cours')
 @section('page_title', 'Cours')
@@ -22,7 +22,6 @@
                 <option value="active" @selected(request('status') === 'active')>Actifs</option>
                 <option value="inactive" @selected(request('status') === 'inactive')>En attente</option>
             </select>
-            <button class="btn btn-sm btn-primary">Filtrer</button>
             <a href="{{ route('courses.create') }}" class="btn btn-sm btn-success"><i class="bi bi-plus-lg"></i> Ajouter</a>
         </form>
     </div>
@@ -38,15 +37,28 @@
                     <td>{{ $c->level ?? '-' }} / {{ $c->class ?? '-' }}</td>
                     <td>{{ $c->teacher?->user?->username ?? 'Administration' }}</td>
                     <td><span class="badge {{ $c->active ? 'text-bg-success' : 'text-bg-warning' }}">{{ $c->active ? 'Actif' : 'En attente' }}</span></td>
-                    <td class="text-end text-nowrap">
-                        @include('admin.partials.toggle-btn', ['route' => route('courses.toggle', $c), 'active' => $c->active])
-                        <a href="{{ route('courses.show', $c) }}" class="btn btn-sm btn-outline-info" title="Voir détails"><i class="bi bi-eye"></i></a>
-                        <a href="{{ route('courses.download', $c) }}" class="btn btn-sm btn-outline-secondary" title="Télécharger"><i class="bi bi-download"></i></a>
-                        <a href="{{ route('courses.edit', $c) }}" class="btn btn-sm btn-outline-primary" title="Modifier"><i class="bi bi-pencil"></i></a>
-                        <form method="POST" action="{{ route('courses.destroy', $c) }}" class="d-inline" onsubmit="return confirm('Supprimer ce cours ?')">
-                            @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
-                        </form>
+                    <td class="text-end">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" aria-expanded="false" title="Actions"><i class="bi bi-three-dots-vertical"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{{ route('courses.show', $c) }}"><i class="bi bi-eye"></i> Voir détails</a></li>
+                                <li>
+                                    <form method="POST" action="{{ route('courses.toggle', $c) }}">
+                                        @csrf @method('PUT')
+                                        <button class="dropdown-item"><i class="bi {{ $c->active ? 'bi-toggle-off' : 'bi-toggle-on' }}"></i> {{ $c->active ? 'Désactiver' : 'Activer' }}</button>
+                                    </form>
+                                </li>
+                                <li><a class="dropdown-item" href="{{ route('courses.download', $c) }}"><i class="bi bi-download"></i> Télécharger</a></li>
+                                <li><a class="dropdown-item" href="{{ route('courses.edit', $c) }}"><i class="bi bi-pencil"></i> Modifier</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="POST" action="{{ route('courses.destroy', $c) }}" onsubmit="return confirm('Supprimer ce cours ?')">
+                                        @csrf @method('DELETE')
+                                        <button class="dropdown-item text-danger"><i class="bi bi-trash"></i> Supprimer</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
                     </td>
                 </tr>
             @empty

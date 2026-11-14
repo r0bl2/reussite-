@@ -13,7 +13,7 @@ use App\Http\Controllers\Admin\SummaryController;
 use App\Http\Controllers\Admin\TeacherController;
 use App\Http\Controllers\Api\AuthController;
 use Illuminate\Support\Facades\Route;
-
+Route::resource('teachers', App\Http\Controllers\Admin\TeacherController::class);
 Route::post('/register', [AuthController::class, 'registerApi'])->name('inscription');
 
 Route::redirect('/', '/dashboard');

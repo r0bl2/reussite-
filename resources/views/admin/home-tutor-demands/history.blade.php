@@ -12,7 +12,6 @@
                 <option value="approved" @selected(request('status') === 'approved')>Validées</option>
                 <option value="rejected" @selected(request('status') === 'rejected')>Rejetées</option>
             </select>
-            <button class="btn btn-sm btn-primary">Filtrer</button>
         </form>
     </div>
     <div class="card-body p-0 table-responsive">

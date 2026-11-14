@@ -14,7 +14,6 @@
                     <option value="{{ $key }}" @selected(request('type_lycee') === $key)>{{ $label }}</option>
                 @endforeach
             </select>
-            <button class="btn btn-sm btn-primary">Filtrer</button>
             <a href="{{ route('subjects.create') }}" class="btn btn-sm btn-success"><i class="bi bi-plus-lg"></i> Ajouter</a>
         </form>
     </div>
@@ -28,12 +27,20 @@
                     <td>{{ $s->id }}</td>
                     <td>{{ $s->name }}</td>
                     <td>{{ $types[$s->type_lycee] ?? '—' }}</td>
-                    <td class="text-end text-nowrap">
-                        <a href="{{ route('subjects.edit', $s) }}" class="btn btn-sm btn-outline-primary" title="Modifier"><i class="bi bi-pencil"></i></a>
-                        <form method="POST" action="{{ route('subjects.destroy', $s) }}" class="d-inline" onsubmit="return confirm('Supprimer cette matière ?')">
-                            @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
-                        </form>
+                    <td class="text-end">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" aria-expanded="false" title="Actions"><i class="bi bi-three-dots-vertical"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{{ route('subjects.edit', $s) }}"><i class="bi bi-pencil"></i> Modifier</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="POST" action="{{ route('subjects.destroy', $s) }}" onsubmit="return confirm('Supprimer cette matière ?')">
+                                        @csrf @method('DELETE')
+                                        <button class="dropdown-item text-danger"><i class="bi bi-trash"></i> Supprimer</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
                     </td>
                 </tr>
             @empty

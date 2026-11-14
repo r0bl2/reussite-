@@ -29,6 +29,10 @@
         .app-sidebar .sidebar-menu > .nav-item.menu-open > .nav-link::after{transform:translateY(-50%) rotate(90deg)}
         .app-sidebar .sidebar-menu > .nav-item > .nav-link > p{display:flex;align-items:center;justify-content:space-between;width:100%;margin:0;white-space:normal;line-height:1.2}
         .app-sidebar .sidebar-menu .nav-arrow{position:static !important;margin-left:.5rem;flex-shrink:0}
+        .dropdown-menu{font-size:.8rem;min-width:11rem}
+        .dropdown-item{padding:.25rem .85rem}
+        .dropdown-item i{width:1.1rem;display:inline-block}
+        .table .dropdown>.btn{--bs-btn-padding-y:.05rem;--bs-btn-padding-x:.4rem}
     </style>
     @stack('styles')
 </head>
@@ -164,6 +168,32 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="{{ asset('adminlte/dist/js/adminlte.min.js') }}"></script>
+<script>
+/* auto-filter */
+(function () {
+    document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function (el) {
+        new bootstrap.Dropdown(el, { popperConfig: { strategy: 'fixed' } });
+    });
+    document.querySelectorAll('.card-header form[method="GET"]').forEach(function (form) {
+        var timer, key = 'focus:' + location.pathname;
+        form.querySelectorAll('select').forEach(function (s) {
+            s.addEventListener('change', function () { form.submit(); });
+        });
+        form.querySelectorAll('input[type="text"],input[type="search"]').forEach(function (i) {
+            i.addEventListener('input', function () {
+                clearTimeout(timer);
+                timer = setTimeout(function () { sessionStorage.setItem(key, i.name); form.submit(); }, 500);
+            });
+        });
+        var last = sessionStorage.getItem(key);
+        if (last) {
+            var el = form.querySelector('[name="' + last + '"]');
+            if (el) { el.focus(); var v = el.value; el.value = ''; el.value = v; }
+            sessionStorage.removeItem(key);
+        }
+    });
+})();
+</script>
 @stack('scripts')
 </body>
 </html>

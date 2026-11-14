@@ -16,7 +16,6 @@
                     <option value="{{ $k }}" @selected(request('type_lycee') === $k)>{{ $l }}</option>
                 @endforeach
             </select>
-            <button class="btn btn-sm btn-primary">Filtrer</button>
         </form>
     </div>
     <div class="card-body p-0 table-responsive">

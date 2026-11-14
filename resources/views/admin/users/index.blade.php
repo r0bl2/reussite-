@@ -8,7 +8,6 @@
     <div class="card-header">
         <form method="GET" class="d-flex gap-2">
             <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Rechercher (nom, email)">
-            <button class="btn btn-sm btn-primary">Filtrer</button>
         </form>
     </div>
     <div class="card-body p-0 table-responsive">

@@ -22,7 +22,6 @@
                 <option value="active" @selected(request('status') === 'active')>Actifs</option>
                 <option value="inactive" @selected(request('status') === 'inactive')>En attente</option>
             </select>
-            <button class="btn btn-sm btn-primary">Filtrer</button>
             <a href="{{ route('summaries.create') }}" class="btn btn-sm btn-success"><i class="bi bi-plus-lg"></i> Ajouter</a>
         </form>
     </div>
@@ -38,15 +37,28 @@
                     <td>{{ $s->level ?? '-' }} / {{ $s->class ?? '-' }}</td>
                     <td>{{ $s->teacher?->user?->username ?? 'Administration' }}</td>
                     <td><span class="badge {{ $s->active ? 'text-bg-success' : 'text-bg-warning' }}">{{ $s->active ? 'Actif' : 'En attente' }}</span></td>
-                    <td class="text-end text-nowrap">
-                        @include('admin.partials.toggle-btn', ['route' => route('summaries.toggle', $s), 'active' => $s->active])
-                        <a href="{{ route('summaries.show', $s) }}" class="btn btn-sm btn-outline-info" title="Voir détails"><i class="bi bi-eye"></i></a>
-                        <a href="{{ route('summaries.download', $s) }}" class="btn btn-sm btn-outline-secondary" title="Télécharger"><i class="bi bi-download"></i></a>
-                        <a href="{{ route('summaries.edit', $s) }}" class="btn btn-sm btn-outline-primary" title="Modifier"><i class="bi bi-pencil"></i></a>
-                        <form method="POST" action="{{ route('summaries.destroy', $s) }}" class="d-inline" onsubmit="return confirm('Supprimer ce résumé ?')">
-                            @csrf @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button>
-                        </form>
+                    <td class="text-end">
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" aria-expanded="false" title="Actions"><i class="bi bi-three-dots-vertical"></i></button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <!-- Pour garder le toggle en mode formulaire ou lien selon ton partial -->
+                                    <div class="px-3 py-1">
+                                        @include('admin.partials.toggle-btn', ['route' => route('summaries.toggle', $s), 'active' => $s->active])
+                                    </div>
+                                </li>
+                                <li><a class="dropdown-item" href="{{ route('summaries.show', $s) }}"><i class="bi bi-eye"></i> Voir détails</a></li>
+                                <li><a class="dropdown-item" href="{{ route('summaries.download', $s) }}"><i class="bi bi-download"></i> Télécharger</a></li>
+                                <li><a class="dropdown-item" href="{{ route('summaries.edit', $s) }}"><i class="bi bi-pencil"></i> Modifier</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="POST" action="{{ route('summaries.destroy', $s) }}" onsubmit="return confirm('Supprimer ce résumé ?')">
+                                        @csrf @method('DELETE')
+                                        <button class="dropdown-item text-danger"><i class="bi bi-trash"></i> Supprimer</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
                     </td>
                 </tr>
             @empty
